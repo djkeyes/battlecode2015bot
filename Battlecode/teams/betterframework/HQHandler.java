@@ -54,17 +54,32 @@ public class HQHandler extends BaseBuildingHandler {
 
 		// for debugging, print out a portion of the pathfinding queue
 		MapLocation hq = rc.senseHQLocation();
-		if (Clock.getRoundNum() % 50 == 0) {
-			System.out.println("round: " + Clock.getRoundNum());
-			int rad = 10;
-			for (int row = -rad; row <= rad; row++) {
-				for (int col = -rad; col <= rad; col++) {
-					int dist = BroadcastInterface.readDistance(rc, hq.x + col, hq.y + row);
-					System.out.print(dist + ", ");
-				}
-				System.out.println();
-			}
-		}
+//		if (Clock.getRoundNum() % 50 == 3) {
+//			System.out.println("round: " + Clock.getRoundNum());
+//			BroadcastInterface.printPfq(rc);
+//			int minRow = -13;
+//			int minCol = -7;
+//			int maxRow = 7;
+//			int maxCol = 13;
+//			for (int row = minRow; row <= maxRow; row++) {
+//				for (int col = minCol; col <= maxCol; col++) {
+//					int curX = hq.x + col;
+//					int curY = hq.y + row;
+//					int dist = BroadcastInterface.readDistance(rc, curX, curY);
+//					// boolean inQueue = false;
+//					// LinkedList<int[]> pfq = BroadcastInterface.getPfq(rc);
+//					// for (int[] coord : pfq) {
+//					// if (coord[0] == curX && coord[1] == curY) {
+//					// inQueue = true;
+//					// break;
+//					// }
+//					// }
+//
+//					System.out.print(dist + /* (inQueue ? "*" : "") + */",\t");
+//				}
+//				System.out.println();
+//			}
+//		}
 	}
 
 	private final Action makeBeavers = new SpawnUnit(RobotType.BEAVER, false);

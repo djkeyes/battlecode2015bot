@@ -147,7 +147,26 @@ public abstract class BaseRobotHandler {
 		int curDist = BroadcastInterface.readDistance(rc, coords[0], coords[1]);
 		MapLocation curLoc = new MapLocation(coords[0], coords[1]);
 		boolean hasUnknownAdjacent = false;
-		;
+
+		// first do a quick check on neighboring locations. sometimes due to race conditions, the current distance may be wrong, but
+		// neighboring ones may be right. this isn't a cure-all for those race conditions, but it helps some.
+		// TODO: maybe turn this into a randomized algorithm? add random elements of the current explored set to the queue?
+		int minAdjDist = Integer.MAX_VALUE;
+		for (Direction d : Util.actualDirections) {
+			MapLocation adjLoc = curLoc.add(d);
+			TerrainTile adjTile = rc.senseTerrainTile(adjLoc);
+			if (adjTile == TerrainTile.NORMAL) {
+				int adjDist = BroadcastInterface.readDistance(rc, adjLoc.x, adjLoc.y);
+				if (adjDist != 0 && adjDist + 1 < curDist) {
+					minAdjDist = adjDist;
+				}
+			}
+		}
+		if (minAdjDist < curDist - 1) {
+			curDist = minAdjDist + 1;
+			BroadcastInterface.setDistance(rc, curLoc.x, curLoc.y, curDist);
+		}
+
 		// explore all the neighboring points
 		for (Direction d : Util.actualDirections) {
 			MapLocation adjLoc = curLoc.add(d);
@@ -267,7 +286,7 @@ public abstract class BaseRobotHandler {
 			return false;
 		}
 	}
-	
+
 	// opposite of scouting outward. try to move back toward hq.
 	public class Retreat implements Action {
 

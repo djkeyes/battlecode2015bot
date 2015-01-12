@@ -1,5 +1,7 @@
 package betterframework;
 
+import java.util.LinkedList;
+
 import battlecode.common.GameActionException;
 import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
@@ -100,7 +102,7 @@ public class BroadcastInterface {
 	public static int readDistance(RobotController rc, int x, int y) throws GameActionException {
 		MapLocation hqLoc = rc.senseHQLocation();
 		int channel = 20 + mapIndex(x - hqLoc.x, y - hqLoc.y);
-//		System.out.println("reading from channel " + channel + "(x=" + x + ", y=" + y + ")");
+		// System.out.println("reading from channel " + channel + "(x=" + x + ", y=" + y + ")");
 		return rc.readBroadcast(channel);
 	}
 
@@ -140,7 +142,7 @@ public class BroadcastInterface {
 	public static int[] dequeuePathfindingQueue(RobotController rc) throws GameActionException {
 		int size = rc.readBroadcast(pfqSizeAddr);
 		if (size > 0) {
-//			System.out.println("removing from pathfinding queue (size=" + size + ")");
+			// System.out.println("removing from pathfinding queue (size=" + size + ")");
 			int head = rc.readBroadcast(pfqHeadAddr);
 			rc.broadcast(pfqHeadAddr, (head + 2) % PFQ_CAPACITY);
 			rc.broadcast(pfqSizeAddr, size - 2);
@@ -155,7 +157,7 @@ public class BroadcastInterface {
 
 	public static void enqueuePathfindingQueue(RobotController rc, int x, int y) throws GameActionException {
 		int size = rc.readBroadcast(pfqSizeAddr);
-//		System.out.println("adding (" + x + "," + y + ") to pathfinding queue (size=" + size + ")");
+		// System.out.println("adding (" + x + "," + y + ") to pathfinding queue (size=" + size + ")");
 		if (size < PFQ_CAPACITY) {
 			int tail = rc.readBroadcast(pfqTailAddr);
 			rc.broadcast(pfqTailAddr, (tail + 2) % PFQ_CAPACITY);
@@ -167,18 +169,31 @@ public class BroadcastInterface {
 
 	}
 
-	private static void printPfq(RobotController rc) throws GameActionException {
+	// for debugging only
+	public static void printPfq(RobotController rc) throws GameActionException {
+		StringBuilder out = new StringBuilder();
 		int head = rc.readBroadcast(pfqHeadAddr);
 		int tail = rc.readBroadcast(pfqTailAddr);
 		int size = rc.readBroadcast(pfqSizeAddr);
-		// this doesn't handle the case when tail < head
-		StringBuilder out = new StringBuilder();
-		for (int i = head; i < tail; i++) {
-			out.append(rc.readBroadcast(pfqBaseAddr + i) + ", ");
+		LinkedList<int[]> pfq = getPfq(rc);
+		for (int[] coord : pfq) {
+			out.append("(" + coord[0] + ", " + coord[1] + "), ");
 		}
 		out.append("head=" + head + ", tail=" + tail + ", size=" + size);
 		out.append("\n");
 		System.out.println(out.toString());
+	}
+
+	// for debugging only
+	public static LinkedList<int[]> getPfq(RobotController rc) throws GameActionException {
+		LinkedList<int[]> result = new LinkedList<int[]>();
+		int head = rc.readBroadcast(pfqHeadAddr);
+		int tail = rc.readBroadcast(pfqTailAddr);
+		// this doesn't handle the case when tail < head
+		for (int i = head; i < tail; i += 2) {
+			result.add(new int[] { rc.readBroadcast(pfqBaseAddr + i), rc.readBroadcast(pfqBaseAddr + i + 1) });
+		}
+		return result;
 	}
 
 }
