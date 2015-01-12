@@ -56,6 +56,7 @@ public class BeaverHandler extends RobotHandler {
 					rc.move(moveDir);
 					return action;
 				}
+				continue;
 			case BUILD_AEROSPACE_LAB:
 				if (tryToBuild(RobotType.AEROSPACELAB)) {
 					return action;
