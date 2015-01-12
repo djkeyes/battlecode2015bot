@@ -145,7 +145,7 @@ public abstract class BaseRobotHandler {
 			// BroadcastInterface.seedPathfindingQueue(rc);
 			return;
 		}
-		System.out.println(Arrays.toString(coords));
+		// System.out.println(Arrays.toString(coords));
 
 		int curDist = BroadcastInterface.readDistance(rc, coords[0], coords[1]);
 		MapLocation curLoc = new MapLocation(coords[0], coords[1]);
@@ -256,6 +256,8 @@ public abstract class BaseRobotHandler {
 
 	// only beavers and miners can mine
 	// this also includes some exploratory behavior, which is triggered if there's better mineral patches nearby
+	public static final double MIN_ORE_PER_TURN_THRESHOLD = 0.2;
+
 	public class Mine implements Action {
 		private boolean isBeaver;
 
@@ -289,7 +291,7 @@ public abstract class BaseRobotHandler {
 						}
 					}
 				}
-				if (maxOre > 0) {
+				if (maxOre > MIN_ORE_PER_TURN_THRESHOLD) {
 					if (moveDir == null) {
 						// rc.canMine() is only false if this is called by a unit other than a beaver or miner. SO DON'T DO THAT!
 						// actually checking costs us 10 bytecodes! (from rc.canMine())
@@ -305,9 +307,9 @@ public abstract class BaseRobotHandler {
 
 		private double miningRate(double orePresent, boolean isBeaver) {
 			if (isBeaver) {
-				return Math.max(Math.min(2., orePresent / 20.), 0.2);
+				return Math.min(orePresent, Math.max(Math.min(2., orePresent / 20.), 0.2));
 			} else {
-				return Math.max(Math.min(3., orePresent / 4.), 0.2);
+				return Math.min(orePresent, Math.max(Math.min(3., orePresent / 4.), 0.2));
 			}
 		}
 	}

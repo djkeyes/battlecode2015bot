@@ -100,7 +100,7 @@ public class BroadcastInterface {
 	public static int readDistance(RobotController rc, int x, int y) throws GameActionException {
 		MapLocation hqLoc = rc.senseHQLocation();
 		int channel = 20 + mapIndex(x - hqLoc.x, y - hqLoc.y);
-		System.out.println("reading from channel " + channel + "(x=" + x + ", y=" + y + ")");
+//		System.out.println("reading from channel " + channel + "(x=" + x + ", y=" + y + ")");
 		return rc.readBroadcast(channel);
 	}
 
@@ -140,7 +140,7 @@ public class BroadcastInterface {
 	public static int[] dequeuePathfindingQueue(RobotController rc) throws GameActionException {
 		int size = rc.readBroadcast(pfqSizeAddr);
 		if (size > 0) {
-			System.out.println("removing from pathfinding queue (size=" + size + ")");
+//			System.out.println("removing from pathfinding queue (size=" + size + ")");
 			int head = rc.readBroadcast(pfqHeadAddr);
 			rc.broadcast(pfqHeadAddr, (head + 2) % PFQ_CAPACITY);
 			rc.broadcast(pfqSizeAddr, size - 2);
@@ -155,7 +155,7 @@ public class BroadcastInterface {
 
 	public static void enqueuePathfindingQueue(RobotController rc, int x, int y) throws GameActionException {
 		int size = rc.readBroadcast(pfqSizeAddr);
-		System.out.println("adding (" + x + "," + y + ") to pathfinding queue (size=" + size + ")");
+//		System.out.println("adding (" + x + "," + y + ") to pathfinding queue (size=" + size + ")");
 		if (size < PFQ_CAPACITY) {
 			int tail = rc.readBroadcast(pfqTailAddr);
 			rc.broadcast(pfqTailAddr, (tail + 2) % PFQ_CAPACITY);
