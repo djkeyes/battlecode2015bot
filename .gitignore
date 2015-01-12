@@ -17,6 +17,6 @@ Battlecode/Uninstaller/*
 #Battlecode/build.xml
 #Battlecode/DisallowedClasses.txt
 #Battlecode/MethodCosts.txt
-#Battlecode/version.txt
+Battlecode/version.txt
 Battlecode/.installationinformation
 
