@@ -267,18 +267,32 @@ public abstract class BaseRobotHandler {
 			return false;
 		}
 	}
-
+	
+	// opposite of scouting outward. try to move back toward hq.
 	public class Retreat implements Action {
 
 		@Override
 		public boolean run() throws GameActionException {
-			// TODO Auto-generated method stub
-			// this method should probably do one of two things:
-			// 1. go in the direction that increases the distance from the enemy base
-			// 2. go in the direction that increases the distance from nearby opponents
+			if (rc.isCoreReady()) {
+				int minDist = Integer.MAX_VALUE;
+				Direction nextDir = null;
+				for (Direction adjDir : Util.actualDirections) {
+					MapLocation adjLoc = rc.getLocation().add(adjDir);
+					if (rc.canMove(adjDir)) {
+						int adjDist = BroadcastInterface.readDistance(rc, adjLoc.x, adjLoc.y);
+						if (adjDist != 0 && adjDist < minDist) {
+							minDist = adjDist;
+							nextDir = adjDir;
+						}
+					}
+				}
+				if (nextDir != null) {
+					rc.move(nextDir);
+					return true;
+				}
+			}
 			return false;
 		}
-
 	}
 
 	// only beavers and miners can mine
@@ -342,11 +356,8 @@ public abstract class BaseRobotHandler {
 	}
 
 	// utility methods
-	// TODO: add a unit direction-finding method that paths toward or away from opponents
 	// TODO: add a building placement-finding method that avoids blocking paths
 	// TODO: add a building placement-finding method that intentionally blocks opponents to fuck up their pathfinding (supply depots
 	// are the best option for this)
 	// TODO: add some space to the broadcast system that records planned movement, so that robots don't crash into each other.
-	// TODO: perform pathfinding (probably done when robots have extra bytecodes to spare)
-	// TODO: add a "spend excess time computing" function for robots who are done computing and have extra bytecodes
 }
