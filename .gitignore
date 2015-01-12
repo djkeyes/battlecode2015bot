@@ -1,0 +1,20 @@
+*.class
+*.jar
+
+# battlecode engine files
+Battlecode/art/*
+Battlecode/bin/*
+Battlecode/doc/*
+Battlecode/lib/*
+Battlecode/maps/*
+Battlecode/music/*
+Battlecode/sound/*
+Battlecode/Uninstaller/*
+
+# We may also want to remove these, since they're mostly meant for local-use
+#Battlecode/AllowedPackages.txt
+#Battlecode/bc.conf
+#Battlecode/build.xml
+#Battlecode/DisallowedClasses.txt
+#Battlecode/MethodCosts.txt
+#Battlecode/version.txt
