@@ -1,6 +1,5 @@
 package betterframework;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
@@ -141,19 +140,20 @@ public abstract class BaseRobotHandler {
 		int[] coords = BroadcastInterface.dequeuePathfindingQueue(rc);
 		BroadcastInterface.unLockPfq(rc);
 		if (coords == null) {
-			// if the queue is empty right now, just enqueue the hq again
-			// BroadcastInterface.seedPathfindingQueue(rc);
 			return;
 		}
 		// System.out.println(Arrays.toString(coords));
 
 		int curDist = BroadcastInterface.readDistance(rc, coords[0], coords[1]);
 		MapLocation curLoc = new MapLocation(coords[0], coords[1]);
+		boolean hasUnknownAdjacent = false;
+		;
 		// explore all the neighboring points
 		for (Direction d : Util.actualDirections) {
 			MapLocation adjLoc = curLoc.add(d);
 			// TODO: if there's enough processing power and space in the queue, also check if this tile is occupied
-			if (rc.senseTerrainTile(adjLoc) == TerrainTile.NORMAL) {
+			TerrainTile adjTile = rc.senseTerrainTile(adjLoc);
+			if (adjTile == TerrainTile.NORMAL) {
 				// if this hasn't been explored, OR if it has been explored and we've found a shorter path, explore it!
 				int adjDist = BroadcastInterface.readDistance(rc, adjLoc.x, adjLoc.y);
 				if (adjDist == 0 || adjDist > curDist + 1) {
@@ -167,7 +167,20 @@ public abstract class BaseRobotHandler {
 					BroadcastInterface.enqueuePathfindingQueue(rc, adjLoc.x, adjLoc.y);
 					BroadcastInterface.unLockPfq(rc);
 				}
+			} else if (adjTile == TerrainTile.UNKNOWN) {
+				hasUnknownAdjacent = true;
 			}
+		}
+		if (hasUnknownAdjacent) {
+			// if there are unknown tiles nearby, re-add this to the queue so we can process again later
+
+			while (!BroadcastInterface.lockPfq(rc)) {
+				if (Clock.getBytecodeNum() > maxBytecodesToUse()) {
+					return;
+				}
+			}
+			BroadcastInterface.enqueuePathfindingQueue(rc, curLoc.x, curLoc.y);
+			BroadcastInterface.unLockPfq(rc);
 		}
 	}
 
@@ -180,8 +193,7 @@ public abstract class BaseRobotHandler {
 	}
 
 	protected void distributeSupply() throws GameActionException {
-		RobotInfo[] nearbyAllies = rc.senseNearbyRobots(rc.getLocation(), GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED,
-				rc.getTeam());
+		RobotInfo[] nearbyAllies = rc.senseNearbyRobots(rc.getLocation(), GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED, rc.getTeam());
 		double lowestSupply = rc.getSupplyLevel();
 		double transferAmount = 0;
 		MapLocation suppliesToThisLocation = null;
@@ -229,14 +241,29 @@ public abstract class BaseRobotHandler {
 	}
 
 	// move this unit to an unexplored square
-	// TODO: this seems like something that would occur over multiple turns, and we'd want to keep the same destionation for all those
-	// turns instead of randomizing. how should we do this?
-	public class Scout implements Action {
+	// this is implemented by simple moving further away from the HQ--however, this means it can get stuck in corners
+	public class ScoutOutward implements Action {
 
 		@Override
 		public boolean run() throws GameActionException {
-			// TODO Auto-generated method stub
-			// this method should go somewhere we've never seen before
+			if (rc.isCoreReady()) {
+				int maxDist = 0;
+				Direction nextDir = null;
+				for (Direction adjDir : Util.actualDirections) {
+					MapLocation adjLoc = rc.getLocation().add(adjDir);
+					if (rc.canMove(adjDir)) {
+						int adjDist = BroadcastInterface.readDistance(rc, adjLoc.x, adjLoc.y);
+						if (adjDist > maxDist) {
+							maxDist = adjDist;
+							nextDir = adjDir;
+						}
+					}
+				}
+				if (nextDir != null) {
+					rc.move(nextDir);
+					return true;
+				}
+			}
 			return false;
 		}
 	}

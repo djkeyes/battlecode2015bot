@@ -26,6 +26,7 @@ public class BeaverHandler extends BaseRobotHandler {
 		LinkedList<Action> result = new LinkedList<Action>();
 		result.add(buildMinerFactory);
 		result.add(mine);
+		result.add(scout);
 		return result;
 	}
 
@@ -40,6 +41,7 @@ public class BeaverHandler extends BaseRobotHandler {
 	private final Action buildHandwashStation = new BuildBuilding(RobotType.HANDWASHSTATION);
 	private final Action buildMinerFactory = new BuildBuilding(RobotType.MINERFACTORY);
 	private final Action mine = new Mine(/* isBeaver= */true);
+	private final Action scout = new ScoutOutward();
 
 	private class BuildBuilding implements Action {
 		private RobotType type;
@@ -50,13 +52,13 @@ public class BeaverHandler extends BaseRobotHandler {
 
 		@Override
 		public boolean run() throws GameActionException {
-//			if (rc.getTeamOre() >= type.oreCost) {
-//				Direction buildDir = findRandomBuildDirection(type);
-//				if (buildDir != null) {
-//					rc.build(buildDir, type);
-//					return true;
-//				}
-//			}
+			// if (rc.getTeamOre() >= type.oreCost) {
+			// Direction buildDir = findRandomBuildDirection(type);
+			// if (buildDir != null) {
+			// rc.build(buildDir, type);
+			// return true;
+			// }
+			// }
 			return false;
 		}
 	}

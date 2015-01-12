@@ -3,9 +3,10 @@ package betterframework;
 import java.util.EnumMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
+import battlecode.common.Clock;
 import battlecode.common.GameActionException;
+import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
 import battlecode.common.RobotType;
@@ -33,7 +34,7 @@ public class HQHandler extends BaseBuildingHandler {
 
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
-		// BroadcastInterface.unLockPfq(rc); // first unlock this if anyone is still holding on
+		atBegginningOfTurn();
 
 		LinkedList<Action> result = new LinkedList<Action>();
 		result.add(countUnits);
@@ -41,6 +42,29 @@ public class HQHandler extends BaseBuildingHandler {
 			result.add(makeBeavers);
 		}
 		return result;
+	}
+
+	private void atBegginningOfTurn() throws GameActionException {
+		// the HQ is guaranteed to run first
+		// so if you want to run code exactly once with a high priority, run it here
+
+		// robots could have died while appending to the queue
+		// so first unlock this if anyone is still holding on
+		BroadcastInterface.unLockPfq(rc);
+
+		// for debugging, print out a portion of the pathfinding queue
+		MapLocation hq = rc.senseHQLocation();
+		if (Clock.getRoundNum() % 50 == 0) {
+			System.out.println("round: " + Clock.getRoundNum());
+			int rad = 10;
+			for (int row = -rad; row <= rad; row++) {
+				for (int col = -rad; col <= rad; col++) {
+					int dist = BroadcastInterface.readDistance(rc, hq.x + col, hq.y + row);
+					System.out.print(dist + ", ");
+				}
+				System.out.println();
+			}
+		}
 	}
 
 	private final Action makeBeavers = new SpawnUnit(RobotType.BEAVER, false);
