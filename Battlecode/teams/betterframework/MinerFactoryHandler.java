@@ -15,8 +15,13 @@ public class MinerFactoryHandler extends BaseBuildingHandler {
 
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
-		// TODO
-		return new LinkedList<Action>();
+		LinkedList<Action> result = new LinkedList<Action>();
+		if (BroadcastInterface.getRobotCount(rc, RobotType.MINER) < 30) {
+			result.add(spawnMiner);
+		}
+		return result;
 	}
+
+	private final Action spawnMiner = new SpawnUnit(RobotType.MINER, false);
 
 }

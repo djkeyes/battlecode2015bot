@@ -15,7 +15,15 @@ public class BarracksHandler extends BaseBuildingHandler {
 
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
-		// TODO
-		return new LinkedList<Action>();
+		// production buildings are expensive, and we need to save up money.
+		// so don't produce units until we have enough production
+		LinkedList<Action> result = new LinkedList<Action>();
+		if (BroadcastInterface.getRobotCount(rc, RobotType.TANKFACTORY) >= 1) {
+			// imho, soldiers are better than bashers
+			result.add(makeSoldier);
+		}
+		return result;
 	}
+
+	private final Action makeSoldier = new SpawnUnit(RobotType.SOLDIER, true);
 }

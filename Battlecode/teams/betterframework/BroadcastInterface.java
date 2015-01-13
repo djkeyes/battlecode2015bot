@@ -106,7 +106,7 @@ public class BroadcastInterface {
 		return rc.readBroadcast(channel);
 	}
 
-	private static int mapIndex(int x, int y) {
+	public static int mapIndex(int x, int y) {
 		x += GameConstants.MAP_MAX_WIDTH;
 		y += GameConstants.MAP_MAX_HEIGHT;
 		return x * GameConstants.MAP_MAX_HEIGHT + y;

@@ -1,5 +1,6 @@
 package betterframework;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
@@ -103,8 +104,8 @@ public abstract class BaseRobotHandler {
 				performActions(actions);
 				rc.setIndicatorString(0, "distributeSupply()");
 				distributeSupply();
+				rc.setIndicatorString(0, "onExcessBytecodes()");
 				while (Clock.getBytecodeNum() < maxBytecodesToUse()) {
-					rc.setIndicatorString(0, "onExcessBytecodes()");
 					onExcessBytecodes();
 				}
 				rc.yield();
@@ -142,9 +143,18 @@ public abstract class BaseRobotHandler {
 		if (coords == null) {
 			return;
 		}
-		// System.out.println(Arrays.toString(coords));
+		int curDist = 0;
+		try {
+			curDist = BroadcastInterface.readDistance(rc, coords[0], coords[1]);
+		} catch (Exception e) {
+			System.out.println("exception in pathfinding while looking up coordinates " + Arrays.toString(coords));
+			MapLocation hqLoc = rc.senseHQLocation();
+			int channel = 20 + BroadcastInterface.mapIndex(coords[0] - hqLoc.x, coords[1] - hqLoc.y);
+			System.out.println("note: hqLoc=" + hqLoc + ", and the coordinates were translated to channel " + channel);
 
-		int curDist = BroadcastInterface.readDistance(rc, coords[0], coords[1]);
+			e.printStackTrace();
+			return;
+		}
 		MapLocation curLoc = new MapLocation(coords[0], coords[1]);
 		boolean hasUnknownAdjacent = false;
 
@@ -224,7 +234,14 @@ public abstract class BaseRobotHandler {
 			}
 		}
 		if (suppliesToThisLocation != null) {
-			rc.transferSupplies((int) transferAmount, suppliesToThisLocation);
+			try {
+				rc.transferSupplies((int) transferAmount, suppliesToThisLocation);
+			} catch (Exception e) {
+				// this should be fixed. if it hasn't happened for several commits, just delete these lines.
+				// I think this happens when a unit misses the turn change (too many bytecodes)
+				System.out.println("exception while sending supplies to " + suppliesToThisLocation);
+//				e.printStackTrace();
+			}
 		}
 
 	}

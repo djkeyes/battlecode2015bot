@@ -4,6 +4,8 @@ import java.util.EnumMap;
 import java.util.LinkedList;
 import java.util.List;
 
+import com.sun.org.apache.bcel.internal.generic.Type;
+
 import battlecode.common.Clock;
 import battlecode.common.GameActionException;
 import battlecode.common.MapLocation;
@@ -34,17 +36,16 @@ public class HQHandler extends BaseBuildingHandler {
 
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
-		atBegginningOfTurn();
+		atBeginningOfTurn();
 
 		LinkedList<Action> result = new LinkedList<Action>();
-		result.add(countUnits);
 		if (BroadcastInterface.getRobotCount(rc, RobotType.BEAVER) < 10) {
 			result.add(makeBeavers);
 		}
 		return result;
 	}
 
-	private void atBegginningOfTurn() throws GameActionException {
+	private void atBeginningOfTurn() throws GameActionException {
 		// the HQ is guaranteed to run first
 		// so if you want to run code exactly once with a high priority, run it here
 
@@ -52,57 +53,60 @@ public class HQHandler extends BaseBuildingHandler {
 		// so first unlock this if anyone is still holding on
 		BroadcastInterface.unLockPfq(rc);
 
+		countUnits();
+
 		// for debugging, print out a portion of the pathfinding queue
-		MapLocation hq = rc.senseHQLocation();
-//		if (Clock.getRoundNum() % 50 == 3) {
-//			System.out.println("round: " + Clock.getRoundNum());
-//			BroadcastInterface.printPfq(rc);
-//			int minRow = -13;
-//			int minCol = -7;
-//			int maxRow = 7;
-//			int maxCol = 13;
-//			for (int row = minRow; row <= maxRow; row++) {
-//				for (int col = minCol; col <= maxCol; col++) {
-//					int curX = hq.x + col;
-//					int curY = hq.y + row;
-//					int dist = BroadcastInterface.readDistance(rc, curX, curY);
-//					// boolean inQueue = false;
-//					// LinkedList<int[]> pfq = BroadcastInterface.getPfq(rc);
-//					// for (int[] coord : pfq) {
-//					// if (coord[0] == curX && coord[1] == curY) {
-//					// inQueue = true;
-//					// break;
-//					// }
-//					// }
-//
-//					System.out.print(dist + /* (inQueue ? "*" : "") + */",\t");
-//				}
-//				System.out.println();
-//			}
-//		}
+		// MapLocation hq = rc.senseHQLocation();
+		// if (Clock.getRoundNum() % 50 == 3) {
+		// System.out.println("round: " + Clock.getRoundNum());
+		// BroadcastInterface.printPfq(rc);
+		// int minRow = -13;
+		// int minCol = -7;
+		// int maxRow = 7;
+		// int maxCol = 13;
+		// for (int row = minRow; row <= maxRow; row++) {
+		// for (int col = minCol; col <= maxCol; col++) {
+		// int curX = hq.x + col;
+		// int curY = hq.y + row;
+		// int dist = BroadcastInterface.readDistance(rc, curX, curY);
+		// // boolean inQueue = false;
+		// // LinkedList<int[]> pfq = BroadcastInterface.getPfq(rc);
+		// // for (int[] coord : pfq) {
+		// // if (coord[0] == curX && coord[1] == curY) {
+		// // inQueue = true;
+		// // break;
+		// // }
+		// // }
+		//
+		// System.out.print(dist + /* (inQueue ? "*" : "") + */",\t");
+		// }
+		// System.out.println();
+		// }
+		// }
+	}
+
+	// it turns out EnumMaps really suck. they cost like 5x more bytecodes.
+	private final int[] counts = new int[RobotType.values().length];
+
+	private final RobotType[] releventTypes = { RobotType.BEAVER, RobotType.MINER, RobotType.SOLDIER, RobotType.DRONE, RobotType.TANK,
+			RobotType.MINERFACTORY, RobotType.BARRACKS, RobotType.HELIPAD, RobotType.TANKFACTORY, };
+
+	public void countUnits() throws GameActionException {
+		// the actual max map radius is like 120*120 + 100*100 or something. idk. but this is bigger, so it's okay.
+		int MAX_MAP_RADIUS = 100000000;
+		RobotInfo[] ourRobots = rc.senseNearbyRobots(MAX_MAP_RADIUS, rc.getTeam());
+		
+		for (RobotType type : releventTypes) {
+			counts[type.ordinal()] = 0;
+		}
+		for (RobotInfo robot : ourRobots) {
+			counts[robot.type.ordinal()]++;
+		}
+		for (RobotType type : releventTypes) {
+			BroadcastInterface.setRobotCount(rc, type, counts[type.ordinal()]);
+		}
 	}
 
 	private final Action makeBeavers = new SpawnUnit(RobotType.BEAVER, false);
-	private final EnumMap<RobotType, Integer> counts = new EnumMap<RobotType, Integer>(RobotType.class);
-	private final Action countUnits = new Action() {
-		@Override
-		public boolean run() throws GameActionException {
-			// the actual max map radius is like 120*120 + 100*100 or something. idk. but this is bigger, so it's okay.
-			int MAX_MAP_RADIUS = 100000000;
-			RobotInfo[] ourRobots = rc.senseNearbyRobots(MAX_MAP_RADIUS, rc.getTeam());
 
-			// TODO: the following 9 lines consume upwards of 3000 bytecodes, even with only a few robots. what's up with that?
-			for (RobotType type : RobotType.values()) {
-				counts.put(type, 0);
-			}
-			for (RobotInfo robot : ourRobots) {
-				counts.put(robot.type, counts.get(robot.type) + 1);
-			}
-			for (RobotType type : RobotType.values()) {
-				BroadcastInterface.setRobotCount(rc, type, counts.get(type));
-			}
-
-			return false; // this action doesn't increment coredelay
-		}
-	};
 }

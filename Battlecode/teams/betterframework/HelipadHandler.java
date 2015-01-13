@@ -5,8 +5,9 @@ import java.util.List;
 
 import battlecode.common.GameActionException;
 import battlecode.common.RobotController;
+import battlecode.common.RobotType;
 
-public class HelipadHandler extends BaseRobotHandler {
+public class HelipadHandler extends BaseBuildingHandler {
 
 	protected HelipadHandler(RobotController rc) {
 		super(rc);
@@ -14,8 +15,15 @@ public class HelipadHandler extends BaseRobotHandler {
 
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
-		// TODO
-		return new LinkedList<Action>();
+		// production buildings are expensive, and we need to save up money.
+		// so don't produce units until we have enough production
+		LinkedList<Action> result = new LinkedList<Action>();
+		if (BroadcastInterface.getRobotCount(rc, RobotType.HELIPAD) >= 6) {
+			result.add(makeDrone);
+		}
+		return result;
 	}
+
+	private final Action makeDrone = new SpawnUnit(RobotType.DRONE, true);
 
 }
