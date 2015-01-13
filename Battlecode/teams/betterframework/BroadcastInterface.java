@@ -25,6 +25,7 @@ public class BroadcastInterface {
 	// 57623: size of pathfinding queue
 	// 57624: mutex lock for the pathfinding queue (i'm not sure if this actually helps, since it isn't atomic?)
 	// 57625-58624: pathfinding queue
+	// 58625: attack/retreat signal
 
 	// is there a better/more efficient way to do this? we could use an enummap, but i think that's less efficient.
 	private static int getRobotIndex(RobotType type) {
@@ -196,4 +197,17 @@ public class BroadcastInterface {
 		return result;
 	}
 
+	private static final int atkChannel = 58625;
+
+	public static void setAttackMode(RobotController rc, boolean shouldAttack) throws GameActionException {
+		if (shouldAttack) {
+			rc.broadcast(atkChannel, 1);
+		} else {
+			rc.broadcast(atkChannel, 0);
+		}
+	}
+
+	public static boolean readAttackMode(RobotController rc) throws GameActionException {
+		return rc.readBroadcast(atkChannel) == 1;
+	}
 }

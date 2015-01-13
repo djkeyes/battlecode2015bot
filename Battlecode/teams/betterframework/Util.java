@@ -4,6 +4,7 @@ import java.util.LinkedList;
 import java.util.Random;
 
 import battlecode.common.Direction;
+import battlecode.common.MapLocation;
 
 public class Util {
 
@@ -39,4 +40,14 @@ public class Util {
 	public static Direction getRandomDirection(Random gen) {
 		return actualDirections[gen.nextInt(actualDirections.length)];
 	}
+	
+
+    public static Direction[] getDirectionsToward(MapLocation cur, MapLocation dest) {
+        Direction toDest = cur.directionTo(dest);
+        Direction[] dirs = {toDest,
+	    		toDest.rotateLeft(), toDest.rotateRight(),
+			toDest.rotateLeft().rotateLeft(), toDest.rotateRight().rotateRight()};
+
+        return dirs;
+    }
 }

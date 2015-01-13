@@ -20,6 +20,7 @@ public class BeaverHandler extends BaseRobotHandler {
 		// so in general, that should be their priority
 		// TODO: update this to follow some semblance of a build order
 		LinkedList<Action> result = new LinkedList<Action>();
+		result.add(attack);
 		int numMinerFactories = BroadcastInterface.getRobotCount(rc, RobotType.MINERFACTORY);
 		if (numMinerFactories < 3) {
 			result.add(buildMinerFactory);
@@ -62,6 +63,7 @@ public class BeaverHandler extends BaseRobotHandler {
 	private final Action buildMinerFactory = new BuildBuilding(RobotType.MINERFACTORY);
 	private final Action mine = new Mine(/* isBeaver= */true);
 	private final Action scout = new ScoutOutward();
+	private final Action attack = new Attack();
 
 	private class BuildBuilding implements Action {
 		private RobotType type;

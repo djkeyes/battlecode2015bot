@@ -7,6 +7,7 @@ import battlecode.common.GameActionException;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
+import betterframework.BaseRobotHandler.Attack;
 
 public class TowerHandler extends BaseRobotHandler {
 
@@ -16,7 +17,10 @@ public class TowerHandler extends BaseRobotHandler {
 
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
-		// TODO
-		return new LinkedList<Action>();
+		LinkedList<Action> result = new LinkedList<Action>();
+		result.add(attack);
+		return result;
 	}
+
+	private final Action attack = new Attack();
 }

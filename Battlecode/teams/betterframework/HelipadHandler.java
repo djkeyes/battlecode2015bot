@@ -18,7 +18,7 @@ public class HelipadHandler extends BaseBuildingHandler {
 		// production buildings are expensive, and we need to save up money.
 		// so don't produce units until we have enough production
 		LinkedList<Action> result = new LinkedList<Action>();
-		if (BroadcastInterface.getRobotCount(rc, RobotType.HELIPAD) >= 6) {
+		if (BroadcastInterface.getRobotCount(rc, RobotType.HELIPAD) >= 3) {
 			result.add(makeDrone);
 		}
 		return result;

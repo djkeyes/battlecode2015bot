@@ -240,7 +240,7 @@ public abstract class BaseRobotHandler {
 				// this should be fixed. if it hasn't happened for several commits, just delete these lines.
 				// I think this happens when a unit misses the turn change (too many bytecodes)
 				System.out.println("exception while sending supplies to " + suppliesToThisLocation);
-//				e.printStackTrace();
+				// e.printStackTrace();
 			}
 		}
 
@@ -261,12 +261,20 @@ public abstract class BaseRobotHandler {
 
 		@Override
 		public boolean run() throws GameActionException {
-			// TODO pick a good target, like the closest one, or the weakest one, or one that all our allies have agreed to attack
-			// this just picks any one.
+			// TODO figure out a good way to determine targets
+			// this picks the weakest one, but we might also want to kill specific types (commanders? beavers?) or use other criteria
+			// (can my allies and I 1-shot it?)
 			RobotInfo[] nearbyEnemies = rc.senseNearbyRobots(rc.getLocation(), rc.getType().attackRadiusSquared, rc.getTeam()
 					.opponent());
 			if (nearbyEnemies.length > 0) {
 				MapLocation enemyLoc = nearbyEnemies[0].location;
+				double minHealth = nearbyEnemies[0].health;
+				for (RobotInfo info : nearbyEnemies) {
+					if (info.health < minHealth) {
+						enemyLoc = info.location;
+						minHealth = info.health;
+					}
+				}
 				if (rc.isWeaponReady() && rc.canAttackLocation(enemyLoc)) {
 					rc.attackLocation(enemyLoc);
 					return true;
@@ -358,7 +366,8 @@ public abstract class BaseRobotHandler {
 				double maxOre = firstTurnOre + secondTurnOre;
 				Direction moveDir = null;
 
-				for (Direction d : Util.actualDirections) {
+				// use a random direction ordering, so we don't deplete all the ore in one place
+				for (Direction d : Util.getRandomDirectionOrdering(gen)) {
 					MapLocation adjLoc = rc.getLocation().add(d);
 					if (rc.canMove(d)) {
 						double adjOre = miningRate(rc.senseOre(adjLoc), isBeaver);

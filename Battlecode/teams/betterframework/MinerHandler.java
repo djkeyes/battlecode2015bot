@@ -14,6 +14,7 @@ public class MinerHandler extends BaseRobotHandler {
 
 	private final Action mine = new Mine(/* isBeaver= */false);
 	private final Action scout = new ScoutOutward();
+	private final Action attack = new Attack();
 
 	// private final Action attack = new Attack();
 	// private final Action retreat = new Retreat();
@@ -22,6 +23,7 @@ public class MinerHandler extends BaseRobotHandler {
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
 		LinkedList<Action> result = new LinkedList<Action>();
+		result.add(attack);
 		result.add(mine);
 		result.add(scout);
 		return result;

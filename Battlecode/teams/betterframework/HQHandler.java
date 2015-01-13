@@ -12,6 +12,7 @@ import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
 import battlecode.common.RobotType;
+import betterframework.BaseRobotHandler.Attack;
 
 public class HQHandler extends BaseBuildingHandler {
 
@@ -39,6 +40,7 @@ public class HQHandler extends BaseBuildingHandler {
 		atBeginningOfTurn();
 
 		LinkedList<Action> result = new LinkedList<Action>();
+		result.add(attack);
 		if (BroadcastInterface.getRobotCount(rc, RobotType.BEAVER) < 10) {
 			result.add(makeBeavers);
 		}
@@ -54,6 +56,8 @@ public class HQHandler extends BaseBuildingHandler {
 		BroadcastInterface.unLockPfq(rc);
 
 		countUnits();
+
+		determineAttackSignal();
 
 		// for debugging, print out a portion of the pathfinding queue
 		// MapLocation hq = rc.senseHQLocation();
@@ -85,6 +89,22 @@ public class HQHandler extends BaseBuildingHandler {
 		// }
 	}
 
+	private static final int DRONES_NEEDED_TO_CHARGE = 30;
+	private static final int DRONES_NEEDED_TO_RETREAT = 20;
+
+	private void determineAttackSignal() throws GameActionException {
+		boolean isSet = BroadcastInterface.readAttackMode(rc);
+		if (isSet) {
+			if (BroadcastInterface.getRobotCount(rc, RobotType.DRONE) <= DRONES_NEEDED_TO_RETREAT) {
+				BroadcastInterface.setAttackMode(rc, false);
+			}
+		} else {
+			if (BroadcastInterface.getRobotCount(rc, RobotType.DRONE) >= DRONES_NEEDED_TO_CHARGE) {
+				BroadcastInterface.setAttackMode(rc, true);
+			}
+		}
+	}
+
 	// it turns out EnumMaps really suck. they cost like 5x more bytecodes.
 	private final int[] counts = new int[RobotType.values().length];
 
@@ -95,7 +115,7 @@ public class HQHandler extends BaseBuildingHandler {
 		// the actual max map radius is like 120*120 + 100*100 or something. idk. but this is bigger, so it's okay.
 		int MAX_MAP_RADIUS = 100000000;
 		RobotInfo[] ourRobots = rc.senseNearbyRobots(MAX_MAP_RADIUS, rc.getTeam());
-		
+
 		for (RobotType type : releventTypes) {
 			counts[type.ordinal()] = 0;
 		}
@@ -107,6 +127,7 @@ public class HQHandler extends BaseBuildingHandler {
 		}
 	}
 
+	private final Action attack = new Attack();
 	private final Action makeBeavers = new SpawnUnit(RobotType.BEAVER, false);
 
 }
