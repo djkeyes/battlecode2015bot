@@ -1,4 +1,4 @@
-package betterframework;
+package dronerush;
 
 import battlecode.common.GameActionException;
 

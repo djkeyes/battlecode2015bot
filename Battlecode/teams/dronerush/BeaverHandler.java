@@ -1,4 +1,4 @@
-package betterframework;
+package dronerush;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -21,29 +21,32 @@ public class BeaverHandler extends BaseRobotHandler {
 		LinkedList<Action> result = new LinkedList<Action>();
 		result.add(attack);
 		int numMinerFactories = BroadcastInterface.getRobotCount(rc, RobotType.MINERFACTORY);
-		if (numMinerFactories < 3) {
+		if (numMinerFactories < 1) {
 			result.add(buildMinerFactory);
 			result.add(mine);
 			result.add(scout);
 			return result;
 		}
-		int numBarracks = BroadcastInterface.getRobotCount(rc, RobotType.BARRACKS);
-		if (numBarracks < 1) {
-			result.add(buildBarracks);
-			result.add(mine);
-			result.add(scout);
-			return result;
-		}
-		// tank factories cost 500, helipads cost 300. so prioritize tank factories when we want them.
-		int numTankFactories = BroadcastInterface.getRobotCount(rc, RobotType.TANKFACTORY);
 		int numHelipads = BroadcastInterface.getRobotCount(rc, RobotType.HELIPAD);
-		if (1.5 * numTankFactories > numHelipads) {
+		if (numHelipads < 3) {
 			result.add(buildHelipad);
 			result.add(mine);
 			result.add(scout);
 			return result;
 		}
-		result.add(buildTankFactory);
+		int numAerospacelabs = BroadcastInterface.getRobotCount(rc, RobotType.AEROSPACELAB);
+		if (numAerospacelabs < 2) {
+			result.add(buildAerospaceLab);
+			result.add(mine);
+			result.add(scout);
+			return result;
+		}
+
+		if (gen.nextDouble() < 0.7) {
+			result.add(buildHelipad);
+		} else {
+			result.add(buildAerospaceLab);
+		}
 		result.add(mine);
 		result.add(scout);
 		return result;
