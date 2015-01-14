@@ -5,7 +5,6 @@ import java.util.List;
 
 import battlecode.common.GameActionException;
 import battlecode.common.RobotController;
-import battlecode.common.RobotType;
 
 public class TankFactoryHandler extends BaseBuildingHandler {
 

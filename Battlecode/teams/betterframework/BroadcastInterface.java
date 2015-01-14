@@ -20,11 +20,6 @@ public class BroadcastInterface {
 	// addresses claimed so far:
 	// 0-20: number of each robot
 	// 21-57620: distance to opponent HQ of each map tile--maybe we should also have distance from our HQ?
-	// 57621: head of pathfinding queue
-	// 57622: tail of pathfinding queue
-	// 57623: size of pathfinding queue
-	// 57624: mutex lock for the pathfinding queue (i'm not sure if this actually helps, since it isn't atomic?)
-	// 57625-58624: pathfinding queue
 	// 58625: attack/retreat signal
 
 	// is there a better/more efficient way to do this? we could use an enummap, but i think that's less efficient.
@@ -111,90 +106,6 @@ public class BroadcastInterface {
 		x += GameConstants.MAP_MAX_WIDTH;
 		y += GameConstants.MAP_MAX_HEIGHT;
 		return x * GameConstants.MAP_MAX_HEIGHT + y;
-	}
-
-	// pathfinding
-
-	private static final int pfqHeadAddr = 57621;
-	private static final int pfqTailAddr = 57622;
-	private static final int pfqSizeAddr = 57623;
-	private static final int pfqLockAddr = 57624;
-	private static final int pfqBaseAddr = 57625;
-	private static final int PFQ_CAPACITY = 1000;
-
-	public static void seedPathfindingQueue(RobotController rc) throws GameActionException {
-		MapLocation hq = rc.senseHQLocation(); // rc.senseEnemyHQLocation();
-		enqueuePathfindingQueue(rc, hq.x, hq.y);
-	}
-
-	public static boolean lockPfq(RobotController rc) throws GameActionException {
-		if (rc.readBroadcast(pfqLockAddr) == 1) {
-			return false;
-		}
-		rc.broadcast(pfqLockAddr, 1);
-		return true;
-	}
-
-	public static void unLockPfq(RobotController rc) throws GameActionException {
-		rc.broadcast(pfqLockAddr, 0);
-	}
-
-	// this isn't necessarily synchronous, so this might result in some race conditions =/
-	public static int[] dequeuePathfindingQueue(RobotController rc) throws GameActionException {
-		int size = rc.readBroadcast(pfqSizeAddr);
-		if (size > 0) {
-			// System.out.println("removing from pathfinding queue (size=" + size + ")");
-			int head = rc.readBroadcast(pfqHeadAddr);
-			rc.broadcast(pfqHeadAddr, (head + 2) % PFQ_CAPACITY);
-			rc.broadcast(pfqSizeAddr, size - 2);
-			// TODO: to be efficient, we should store x and y as shorts. then we can store 2 in 1 entry.
-			int x = rc.readBroadcast(pfqBaseAddr + head);
-			int y = rc.readBroadcast(pfqBaseAddr + ((head + 1) % PFQ_CAPACITY));
-			// printPfq(rc);
-			return new int[] { x, y };
-		}
-		return null;
-	}
-
-	public static void enqueuePathfindingQueue(RobotController rc, int x, int y) throws GameActionException {
-		int size = rc.readBroadcast(pfqSizeAddr);
-		// System.out.println("adding (" + x + "," + y + ") to pathfinding queue (size=" + size + ")");
-		if (size < PFQ_CAPACITY) {
-			int tail = rc.readBroadcast(pfqTailAddr);
-			rc.broadcast(pfqTailAddr, (tail + 2) % PFQ_CAPACITY);
-			rc.broadcast(pfqSizeAddr, size + 2);
-			rc.broadcast(pfqBaseAddr + tail, x);
-			rc.broadcast(pfqBaseAddr + ((tail + 1) % PFQ_CAPACITY), y);
-			// printPfq(rc);
-		}
-
-	}
-
-	// for debugging only
-	public static void printPfq(RobotController rc) throws GameActionException {
-		StringBuilder out = new StringBuilder();
-		int head = rc.readBroadcast(pfqHeadAddr);
-		int tail = rc.readBroadcast(pfqTailAddr);
-		int size = rc.readBroadcast(pfqSizeAddr);
-		LinkedList<int[]> pfq = getPfq(rc);
-		for (int[] coord : pfq) {
-			out.append("(" + coord[0] + ", " + coord[1] + "), ");
-		}
-		out.append("head=" + head + ", tail=" + tail + ", size=" + size);
-		out.append("\n");
-		System.out.println(out.toString());
-	}
-
-	// for debugging only
-	public static LinkedList<int[]> getPfq(RobotController rc) throws GameActionException {
-		LinkedList<int[]> result = new LinkedList<int[]>();
-		int head = rc.readBroadcast(pfqHeadAddr);
-		int tail = rc.readBroadcast(pfqTailAddr);
-		// this doesn't handle the case when tail < head
-		for (int i = head; i < tail; i += 2) {
-			result.add(new int[] { rc.readBroadcast(pfqBaseAddr + i), rc.readBroadcast(pfqBaseAddr + i + 1) });
-		}
-		return result;
 	}
 
 	private static final int atkChannel = 58625;
