@@ -50,4 +50,11 @@ public class Util {
 
         return dirs;
     }
+    public static Direction[] getDirectionsStrictlyToward(MapLocation cur, MapLocation dest) {
+        Direction toDest = cur.directionTo(dest);
+        Direction[] dirs = {toDest,
+	    		toDest.rotateLeft(), toDest.rotateRight()};
+
+        return dirs;
+    }
 }

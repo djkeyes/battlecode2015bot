@@ -1,20 +1,12 @@
 package betterframework;
 
-import java.util.EnumMap;
 import java.util.LinkedList;
 import java.util.List;
 
-import sun.security.action.GetLongAction;
-
-import com.sun.org.apache.bcel.internal.generic.Type;
-
-import battlecode.common.Clock;
 import battlecode.common.GameActionException;
-import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
 import battlecode.common.RobotType;
-import betterframework.BaseRobotHandler.Attack;
 
 public class HQHandler extends BaseBuildingHandler {
 

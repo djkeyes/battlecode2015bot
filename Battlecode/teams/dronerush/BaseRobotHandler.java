@@ -1,6 +1,5 @@
 package dronerush;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
@@ -11,6 +10,7 @@ import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
+import battlecode.common.RobotType;
 import battlecode.common.TerrainTile;
 
 public abstract class BaseRobotHandler {
@@ -65,18 +65,20 @@ public abstract class BaseRobotHandler {
 
 	protected RobotController rc;
 	protected Random gen;
+	private MapLocation ourHq = null;
 
 	protected BaseRobotHandler(RobotController rc) {
 		this.rc = rc;
 		gen = new Random(rc.getID());
 
+		ourHq = rc.senseHQLocation();
 	}
 
 	public int maxBytecodesToUse() {
 		return 1500;
 	}
 
-	public final void run() {
+	public void run() {
 		// here's the breakdown for this robot:
 		// 1. init(). makes sense.
 		// then we start looping.
@@ -104,10 +106,10 @@ public abstract class BaseRobotHandler {
 				performActions(actions);
 				rc.setIndicatorString(0, "distributeSupply()");
 				distributeSupply();
-//				rc.setIndicatorString(0, "onExcessBytecodes()");
-//				while (Clock.getBytecodeNum() < maxBytecodesToUse()) {
-//					onExcessBytecodes();
-//				}
+				rc.setIndicatorString(0, "onExcessBytecodes()");
+				while (Clock.getBytecodeNum() < maxBytecodesToUse()) {
+					onExcessBytecodes();
+				}
 				rc.yield();
 			} catch (GameActionException ex) {
 				rc.setIndicatorString(0, "onException()");
@@ -131,85 +133,60 @@ public abstract class BaseRobotHandler {
 	}
 
 	protected void doPathfinding() throws GameActionException {
-		// first lock the pathfinding queue while we modifiy it
-		while (!BroadcastInterface.lockPfq(rc)) {
-			if (Clock.getBytecodeNum() > maxBytecodesToUse()) {
-				return;
-			}
-		}
-		// pick a point from the front of the pathfinding queue
-		int[] coords = BroadcastInterface.dequeuePathfindingQueue(rc);
-		BroadcastInterface.unLockPfq(rc);
-		if (coords == null) {
-			return;
-		}
-		int curDist = 0;
-		try {
-			curDist = BroadcastInterface.readDistance(rc, coords[0], coords[1]);
-		} catch (Exception e) {
-			System.out.println("exception in pathfinding while looking up coordinates " + Arrays.toString(coords));
-			MapLocation hqLoc = rc.senseHQLocation();
-			int channel = 20 + BroadcastInterface.mapIndex(coords[0] - hqLoc.x, coords[1] - hqLoc.y);
-			System.out.println("note: hqLoc=" + hqLoc + ", and the coordinates were translated to channel " + channel);
+		// this is a randomized pathfinding algorithm--it's much less efficient than a distributed BFS, but it's more resilient to
+		// robot failure/death/bytecode limits
 
-			e.printStackTrace();
-			return;
-		}
-		MapLocation curLoc = new MapLocation(coords[0], coords[1]);
-		boolean hasUnknownAdjacent = false;
+		// pick a location, then do pathfinding
+		MapLocation randomLoc;
+		// generate random tiles until we get one that's actually visible
+		while (rc.senseTerrainTile(randomLoc = getRandomPathfindingTile()) != TerrainTile.NORMAL)
+			;
+		updateDistances(randomLoc);
+	}
 
-		// first do a quick check on neighboring locations. sometimes due to race conditions, the current distance may be wrong, but
-		// neighboring ones may be right. this isn't a cure-all for those race conditions, but it helps some.
-		// TODO: maybe turn this into a randomized algorithm? add random elements of the current explored set to the queue?
-		int minAdjDist = Integer.MAX_VALUE;
+	private MapLocation getRandomPathfindingTile() {
+		// what is a good place to pathfind?
+		// well, locations near us seem good
+		// also locations near the hq seem good (since we start there)
+		// also eventually we'll want to get every location
+		// so pick one of those 3 options
+		double result = gen.nextDouble();
+		if (result < 1. / 3.) {
+			// pick one of the tiles near us
+			return getLocationNear(rc.getLocation());
+		} else if (result < 2. / 3.) {
+			// pick a tile near hq
+			return getLocationNear(ourHq);
+		} else {
+			// pick a tile anywhere
+			int x = gen.nextInt(2 * GameConstants.MAP_MAX_WIDTH + 1) - GameConstants.MAP_MAX_WIDTH;
+			int y = gen.nextInt(2 * GameConstants.MAP_MAX_HEIGHT + 1) - GameConstants.MAP_MAX_HEIGHT;
+			return ourHq.add(x, y);
+		}
+	}
+
+	private MapLocation getLocationNear(MapLocation orig) {
+		int x = gen.nextInt(7) - 5;
+		int y = gen.nextInt(7) - 5;
+		return orig.add(x, y);
+	}
+
+	private void updateDistances(MapLocation randomLoc) throws GameActionException {
+		// find the smallest non-zero distance (zero indicates unknown distance)
+		int curDist = BroadcastInterface.readDistance(rc, randomLoc.x, randomLoc.y);
+		int minDist = Integer.MAX_VALUE;
 		for (Direction d : Util.actualDirections) {
-			MapLocation adjLoc = curLoc.add(d);
-			TerrainTile adjTile = rc.senseTerrainTile(adjLoc);
-			if (adjTile == TerrainTile.NORMAL) {
-				int adjDist = BroadcastInterface.readDistance(rc, adjLoc.x, adjLoc.y);
-				if (adjDist != 0 && adjDist + 1 < curDist) {
-					minAdjDist = adjDist;
-				}
+			MapLocation nextLoc = randomLoc.add(d);
+			int dist = BroadcastInterface.readDistance(rc, nextLoc.x, nextLoc.y);
+			if (dist != 0) {
+				minDist = Math.min(minDist, dist);
 			}
 		}
-		if (minAdjDist < curDist - 1) {
-			curDist = minAdjDist + 1;
-			BroadcastInterface.setDistance(rc, curLoc.x, curLoc.y, curDist);
-		}
-
-		// explore all the neighboring points
-		for (Direction d : Util.actualDirections) {
-			MapLocation adjLoc = curLoc.add(d);
-			// TODO: if there's enough processing power and space in the queue, also check if this tile is occupied
-			TerrainTile adjTile = rc.senseTerrainTile(adjLoc);
-			if (adjTile == TerrainTile.NORMAL) {
-				// if this hasn't been explored, OR if it has been explored and we've found a shorter path, explore it!
-				int adjDist = BroadcastInterface.readDistance(rc, adjLoc.x, adjLoc.y);
-				if (adjDist == 0 || adjDist > curDist + 1) {
-					BroadcastInterface.setDistance(rc, adjLoc.x, adjLoc.y, curDist + 1);
-
-					while (!BroadcastInterface.lockPfq(rc)) {
-						if (Clock.getBytecodeNum() > maxBytecodesToUse()) {
-							return;
-						}
-					}
-					BroadcastInterface.enqueuePathfindingQueue(rc, adjLoc.x, adjLoc.y);
-					BroadcastInterface.unLockPfq(rc);
-				}
-			} else if (adjTile == TerrainTile.UNKNOWN) {
-				hasUnknownAdjacent = true;
+		if (minDist < Integer.MAX_VALUE) {
+			if (curDist == 0 || minDist < curDist) {
+				int dist = minDist + 1;
+				BroadcastInterface.setDistance(rc, randomLoc.x, randomLoc.y, dist);
 			}
-		}
-		if (hasUnknownAdjacent) {
-			// if there are unknown tiles nearby, re-add this to the queue so we can process again later
-
-			while (!BroadcastInterface.lockPfq(rc)) {
-				if (Clock.getBytecodeNum() > maxBytecodesToUse()) {
-					return;
-				}
-			}
-			BroadcastInterface.enqueuePathfindingQueue(rc, curLoc.x, curLoc.y);
-			BroadcastInterface.unLockPfq(rc);
 		}
 	}
 
@@ -222,15 +199,18 @@ public abstract class BaseRobotHandler {
 	}
 
 	protected void distributeSupply() throws GameActionException {
-		RobotInfo[] nearbyAllies = rc.senseNearbyRobots(rc.getLocation(), GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED, rc.getTeam());
+		RobotInfo[] nearbyAllies = rc.senseNearbyRobots(rc.getLocation(), GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED,
+				rc.getTeam());
 		double lowestSupply = rc.getSupplyLevel();
 		double transferAmount = 0;
 		MapLocation suppliesToThisLocation = null;
 		for (RobotInfo ri : nearbyAllies) {
-			if (ri.supplyLevel < lowestSupply) {
-				lowestSupply = ri.supplyLevel;
-				transferAmount = (rc.getSupplyLevel() - ri.supplyLevel) / 2;
-				suppliesToThisLocation = ri.location;
+			if (ri.type != RobotType.MISSILE) {
+				if (ri.supplyLevel < lowestSupply) {
+					lowestSupply = ri.supplyLevel;
+					transferAmount = (rc.getSupplyLevel() - ri.supplyLevel) / 2;
+					suppliesToThisLocation = ri.location;
+				}
 			}
 		}
 		if (suppliesToThisLocation != null) {
@@ -398,6 +378,20 @@ public abstract class BaseRobotHandler {
 				return Math.min(orePresent, Math.max(Math.min(3., orePresent / 4.), 0.2));
 			}
 		}
+	}
+
+	public boolean inHqOrTowerRange(MapLocation loc) {
+		// TODO: if there are more than 4 towers, the HQ does AOE, so we need to increase the effective range
+		MapLocation enemyHq = rc.senseEnemyHQLocation();
+		if (loc.distanceSquaredTo(enemyHq) <= RobotType.HQ.attackRadiusSquared) {
+			return true;
+		}
+		for (MapLocation enemyTower : rc.senseEnemyTowerLocations()) {
+			if (loc.distanceSquaredTo(enemyTower) <= RobotType.TOWER.attackRadiusSquared) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	// utility methods

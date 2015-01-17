@@ -16,7 +16,8 @@ public class HQHandler extends BaseBuildingHandler {
 
 	@Override
 	public void init() throws GameActionException {
-		BroadcastInterface.seedPathfindingQueue(rc);
+		// seed the distances
+		BroadcastInterface.setDistance(rc, rc.getLocation().x, rc.getLocation().y, 1);
 	}
 
 	@Override
@@ -44,10 +45,6 @@ public class HQHandler extends BaseBuildingHandler {
 	private void atBeginningOfTurn() throws GameActionException {
 		// the HQ is guaranteed to run first
 		// so if you want to run code exactly once with a high priority, run it here
-
-		// robots could have died while appending to the queue
-		// so first unlock this if anyone is still holding on
-		BroadcastInterface.unLockPfq(rc);
 
 		countUnits();
 

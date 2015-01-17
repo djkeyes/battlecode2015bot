@@ -16,7 +16,7 @@ public class AerospaceLabHandler extends BaseBuildingHandler {
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
 		LinkedList<Action> result = new LinkedList<Action>();
-		if (BroadcastInterface.getRobotCount(rc, RobotType.DRONE) > 20) {
+		if (BroadcastInterface.getRobotCount(rc, RobotType.DRONE) > 5) {
 			result.add(makeLauncher);
 		}
 		return result;

@@ -28,21 +28,21 @@ public class BeaverHandler extends BaseRobotHandler {
 			return result;
 		}
 		int numHelipads = BroadcastInterface.getRobotCount(rc, RobotType.HELIPAD);
-		if (numHelipads < 3) {
+		if (numHelipads < 2) {
 			result.add(buildHelipad);
 			result.add(mine);
 			result.add(scout);
 			return result;
 		}
 		int numAerospacelabs = BroadcastInterface.getRobotCount(rc, RobotType.AEROSPACELAB);
-		if (numAerospacelabs < 2) {
+		if (numAerospacelabs < 1) {
 			result.add(buildAerospaceLab);
 			result.add(mine);
 			result.add(scout);
 			return result;
 		}
 
-		if (gen.nextDouble() < 0.7) {
+		if (gen.nextDouble() < 0.5) {
 			result.add(buildHelipad);
 		} else {
 			result.add(buildAerospaceLab);
