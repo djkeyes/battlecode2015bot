@@ -5,6 +5,7 @@ import java.util.List;
 
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
+import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
@@ -96,7 +97,15 @@ public class DroneHandler extends BaseRobotHandler {
 					return true;
 				}
 			}
-			if(nextLoc.distanceSquaredTo(enemyHq) <= RobotType.HQ.attackRadiusSquared){
+			int hqAttackRadius;
+			if(enemyTowers.length >= 5){
+				hqAttackRadius = 52;
+			} else if(enemyTowers.length >= 2){
+				hqAttackRadius = GameConstants.HQ_BUFFED_ATTACK_RADIUS_SQUARED;
+			} else {
+				hqAttackRadius = RobotType.HQ.attackRadiusSquared;
+			}
+			if(nextLoc.distanceSquaredTo(enemyHq) <= hqAttackRadius){
 				return true;
 			}
 			return false;
