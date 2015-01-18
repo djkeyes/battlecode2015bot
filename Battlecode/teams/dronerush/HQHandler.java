@@ -4,6 +4,8 @@ import java.util.LinkedList;
 import java.util.List;
 
 import battlecode.common.GameActionException;
+import battlecode.common.GameConstants;
+import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
 import battlecode.common.RobotType;
@@ -99,8 +101,8 @@ public class HQHandler extends BaseBuildingHandler {
 	// it turns out EnumMaps really suck. they cost like 5x more bytecodes.
 	private final int[] counts = new int[RobotType.values().length];
 
-	private final RobotType[] releventTypes = { RobotType.BEAVER, RobotType.MINER, RobotType.SOLDIER, RobotType.DRONE, RobotType.TANK,
-			RobotType.MINERFACTORY, RobotType.BARRACKS, RobotType.HELIPAD, RobotType.TANKFACTORY, };
+	private final RobotType[] releventTypes = { RobotType.BEAVER, RobotType.MINER, RobotType.SOLDIER, RobotType.DRONE,
+			RobotType.TANK, RobotType.MINERFACTORY, RobotType.BARRACKS, RobotType.HELIPAD, RobotType.TANKFACTORY, };
 
 	public void countUnits() throws GameActionException {
 		// the actual max map radius is like 120*120 + 100*100 or something. idk. but this is bigger, so it's okay.
@@ -118,7 +120,60 @@ public class HQHandler extends BaseBuildingHandler {
 		}
 	}
 
-	private final Action attack = new Attack();
+	private final Action attack = new HqAttack();
 	private final Action makeBeavers = new SpawnUnit(RobotType.BEAVER, false);
 
+
+	private final class HqAttack implements Action {
+		@Override
+		public boolean run() throws GameActionException {
+			// the HQ differs from normal attacks in that its range is sometimes a little longer, even more so with AOE
+			// unfortunately due to integer rounding, we can't just add together the two ranges like (sqrt(35)+sqrt(2))^2
+			// for example, the HQ can't hit an object at sq range 49 on the horizontal, but it CAN hit an object at sq range 50 on the
+			// diagonal
+			// so we have a little more logic to handle that
+			int numTowers = rc.senseTowerLocations().length;
+			boolean hasRangeBuff = numTowers >= 2;
+			boolean hasAoeBuff = numTowers >= 5;
+			int actualRangeSq;
+			int sensingRangeSq;
+			if (hasAoeBuff) {
+				// draw out the ranges yourself if you want to verify this number
+				// this needs to be updated if hq ranges change
+				sensingRangeSq = 53;
+				actualRangeSq = GameConstants.HQ_BUFFED_ATTACK_RADIUS_SQUARED;
+			} else if (hasRangeBuff) {
+				sensingRangeSq = actualRangeSq = GameConstants.HQ_BUFFED_ATTACK_RADIUS_SQUARED;
+			} else {
+				sensingRangeSq = actualRangeSq = RobotType.HQ.attackRadiusSquared;
+			}
+
+			RobotInfo[] nearbyEnemies = rc.senseNearbyRobots(rc.getLocation(), sensingRangeSq, rc.getTeam().opponent());
+			if (nearbyEnemies.length > 0 && rc.isWeaponReady()) {
+				MapLocation enemyLoc = null;
+				MapLocation targetLoc = null;
+
+				double minHealth = Integer.MAX_VALUE;
+				for (RobotInfo info : nearbyEnemies) {
+					if (info.health < minHealth) {
+						enemyLoc = info.location;
+						minHealth = info.health;
+
+						int distSq = rc.getLocation().distanceSquaredTo(enemyLoc);
+						if (distSq > actualRangeSq) { // this may happen if we need to use AOE
+							System.out.println("using AOE attack");
+							targetLoc = enemyLoc.add(enemyLoc.directionTo(rc.getLocation()));
+						} else {
+							targetLoc = enemyLoc;
+						}
+					}
+				}
+				if (rc.canAttackLocation(targetLoc)) {
+					rc.attackLocation(targetLoc);
+					return true;
+				}
+			}
+			return false;
+		}
+	}
 }

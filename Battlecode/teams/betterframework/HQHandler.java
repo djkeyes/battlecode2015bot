@@ -4,6 +4,8 @@ import java.util.LinkedList;
 import java.util.List;
 
 import battlecode.common.GameActionException;
+import battlecode.common.GameConstants;
+import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
 import battlecode.common.RobotType;
@@ -37,7 +39,7 @@ public class HQHandler extends BaseBuildingHandler {
 		LinkedList<Action> result = new LinkedList<Action>();
 		result.add(attack);
 		if (BroadcastInterface.getRobotCount(rc, RobotType.BEAVER) < 10) {
-			result.add(makeBeavers);
+			 result.add(makeBeavers);
 		}
 		return result;
 	}
@@ -50,24 +52,24 @@ public class HQHandler extends BaseBuildingHandler {
 
 		determineAttackSignal();
 
-//		// for debugging, print out a portion of the pathfinding queue
-//		MapLocation hq = rc.senseHQLocation();
-//		if (Clock.getRoundNum() % 50 == 0) {
-//			System.out.println("round: " + Clock.getRoundNum());
-//			int minRow = -5;
-//			int minCol = -5;
-//			int maxRow = 5;
-//			int maxCol = 5;
-//			for (int row = minRow; row <= maxRow; row++) {
-//				for (int col = minCol; col <= maxCol; col++) {
-//					int curX = hq.x + col;
-//					int curY = hq.y + row;
-//					int dist = BroadcastInterface.readDistance(rc, curX, curY);
-//					System.out.print(dist + ",\t");
-//				}
-//				System.out.println();
-//			}
-//		}
+		// // for debugging, print out a portion of the pathfinding queue
+		// MapLocation hq = rc.senseHQLocation();
+		// if (Clock.getRoundNum() % 50 == 0) {
+		// System.out.println("round: " + Clock.getRoundNum());
+		// int minRow = -5;
+		// int minCol = -5;
+		// int maxRow = 5;
+		// int maxCol = 5;
+		// for (int row = minRow; row <= maxRow; row++) {
+		// for (int col = minCol; col <= maxCol; col++) {
+		// int curX = hq.x + col;
+		// int curY = hq.y + row;
+		// int dist = BroadcastInterface.readDistance(rc, curX, curY);
+		// System.out.print(dist + ",\t");
+		// }
+		// System.out.println();
+		// }
+		// }
 	}
 
 	private static final int DRONES_NEEDED_TO_CHARGE = 30;
@@ -108,7 +110,59 @@ public class HQHandler extends BaseBuildingHandler {
 		}
 	}
 
-	private final Action attack = new Attack();
+	private final Action attack = new HqAttack();
 	private final Action makeBeavers = new SpawnUnit(RobotType.BEAVER, false);
 
+	private final class HqAttack implements Action {
+		@Override
+		public boolean run() throws GameActionException {
+			// the HQ differs from normal attacks in that its range is sometimes a little longer, even more so with AOE
+			// unfortunately due to integer rounding, we can't just add together the two ranges like (sqrt(35)+sqrt(2))^2
+			// for example, the HQ can't hit an object at sq range 49 on the horizontal, but it CAN hit an object at sq range 50 on the
+			// diagonal
+			// so we have a little more logic to handle that
+			int numTowers = rc.senseTowerLocations().length;
+			boolean hasRangeBuff = numTowers >= 2;
+			boolean hasAoeBuff = numTowers >= 5;
+			int actualRangeSq;
+			int sensingRangeSq;
+			if (hasAoeBuff) {
+				// draw out the ranges yourself if you want to verify this number
+				// this needs to be updated if hq ranges change
+				sensingRangeSq = 53;
+				actualRangeSq = GameConstants.HQ_BUFFED_ATTACK_RADIUS_SQUARED;
+			} else if (hasRangeBuff) {
+				sensingRangeSq = actualRangeSq = GameConstants.HQ_BUFFED_ATTACK_RADIUS_SQUARED;
+			} else {
+				sensingRangeSq = actualRangeSq = RobotType.HQ.attackRadiusSquared;
+			}
+
+			RobotInfo[] nearbyEnemies = rc.senseNearbyRobots(rc.getLocation(), sensingRangeSq, rc.getTeam().opponent());
+			if (nearbyEnemies.length > 0 && rc.isWeaponReady()) {
+				MapLocation enemyLoc = null;
+				MapLocation targetLoc = null;
+
+				double minHealth = Integer.MAX_VALUE;
+				for (RobotInfo info : nearbyEnemies) {
+					if (info.health < minHealth) {
+						enemyLoc = info.location;
+						minHealth = info.health;
+
+						int distSq = rc.getLocation().distanceSquaredTo(enemyLoc);
+						if (distSq > actualRangeSq) { // this may happen if we need to use AOE
+							System.out.println("using AOE attack");
+							targetLoc = enemyLoc.add(enemyLoc.directionTo(rc.getLocation()));
+						} else {
+							targetLoc = enemyLoc;
+						}
+					}
+				}
+				if (rc.canAttackLocation(targetLoc)) {
+					rc.attackLocation(targetLoc);
+					return true;
+				}
+			}
+			return false;
+		}
+	}
 }
