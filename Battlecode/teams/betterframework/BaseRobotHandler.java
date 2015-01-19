@@ -11,6 +11,7 @@ import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
 import battlecode.common.TerrainTile;
+import betterframework.Util.MapConfiguration;
 
 public abstract class BaseRobotHandler {
 
@@ -172,11 +173,11 @@ public abstract class BaseRobotHandler {
 
 	private void updateDistances(MapLocation randomLoc) throws GameActionException {
 		// find the smallest non-zero distance (zero indicates unknown distance)
-		int curDist = BroadcastInterface.readDistance(rc, randomLoc.x, randomLoc.y);
+		int curDist = getDistanceFromOurHq(randomLoc);
 		int minDist = Integer.MAX_VALUE;
 		for (Direction d : Util.actualDirections) {
 			MapLocation nextLoc = randomLoc.add(d);
-			int dist = BroadcastInterface.readDistance(rc, nextLoc.x, nextLoc.y);
+			int dist = getDistanceFromOurHq(nextLoc);
 			if (dist != 0) {
 				minDist = Math.min(minDist, dist);
 			}
@@ -269,12 +270,38 @@ public abstract class BaseRobotHandler {
 			if (rc.isCoreReady()) {
 				int maxDist = 0;
 				Direction nextDir = null;
+				for (Direction adjDir : Util.getRandomDirectionOrdering(gen)) {
+					MapLocation adjLoc = rc.getLocation().add(adjDir);
+					if (rc.canMove(adjDir)) {
+						int adjDist = getDistanceFromOurHq(adjLoc);
+						if (adjDist > maxDist) {
+							maxDist = adjDist;
+							nextDir = adjDir;
+						}
+					}
+				}
+				if (nextDir != null) {
+					rc.move(nextDir);
+					return true;
+				}
+			}
+			return false;
+		}
+	}
+
+	public class MoveTowardEnemyHq implements Action {
+		@Override
+		public boolean run() throws GameActionException {
+			if (rc.isCoreReady()) {
+				int minDist = Integer.MAX_VALUE;
+				Direction nextDir = null;
 				for (Direction adjDir : Util.actualDirections) {
 					MapLocation adjLoc = rc.getLocation().add(adjDir);
 					if (rc.canMove(adjDir)) {
-						int adjDist = BroadcastInterface.readDistance(rc, adjLoc.x, adjLoc.y);
-						if (adjDist > maxDist) {
-							maxDist = adjDist;
+						int adjDist = getDistanceFromEnemyHq(adjLoc);
+						// 0 indicates unexplored tiles
+						if (adjDist != 0 && adjDist < minDist) {
+							minDist = adjDist;
 							nextDir = adjDir;
 						}
 					}
@@ -299,7 +326,7 @@ public abstract class BaseRobotHandler {
 				for (Direction adjDir : Util.actualDirections) {
 					MapLocation adjLoc = rc.getLocation().add(adjDir);
 					if (rc.canMove(adjDir)) {
-						int adjDist = BroadcastInterface.readDistance(rc, adjLoc.x, adjLoc.y);
+						int adjDist = getDistanceFromOurHq(adjLoc);
 						if (adjDist != 0 && adjDist < minDist) {
 							minDist = adjDist;
 							nextDir = adjDir;
@@ -369,9 +396,13 @@ public abstract class BaseRobotHandler {
 
 		private double miningRate(double orePresent, boolean isBeaver) {
 			if (isBeaver) {
-				return Math.min(orePresent, Math.max(Math.min(GameConstants.BEAVER_MINE_MAX, orePresent / (double)GameConstants.BEAVER_MINE_RATE), GameConstants.MINIMUM_MINE_AMOUNT));
+				return Math.min(orePresent, Math.max(
+						Math.min(GameConstants.BEAVER_MINE_MAX, orePresent / (double) GameConstants.BEAVER_MINE_RATE),
+						GameConstants.MINIMUM_MINE_AMOUNT));
 			} else {
-				return Math.min(orePresent, Math.max(Math.min(GameConstants.MINER_MINE_MAX, orePresent / (double) GameConstants.MINER_MINE_RATE), GameConstants.MINIMUM_MINE_AMOUNT));
+				return Math.min(orePresent, Math.max(
+						Math.min(GameConstants.MINER_MINE_MAX, orePresent / (double) GameConstants.MINER_MINE_RATE),
+						GameConstants.MINIMUM_MINE_AMOUNT));
 			}
 		}
 	}
@@ -381,4 +412,71 @@ public abstract class BaseRobotHandler {
 	// TODO: add a building placement-finding method that intentionally blocks opponents to fuck up their pathfinding (supply depots
 	// are the best option for this)
 	// TODO: add some space to the broadcast system that records planned movement, so that robots don't crash into each other.
+
+	public int getDistanceFromOurHq(MapLocation target) throws GameActionException {
+		return BroadcastInterface.readDistance(rc, target.x, target.y);
+	}
+
+	public int getDistanceFromEnemyHq(MapLocation target) throws GameActionException {
+		MapConfiguration configuration = getMapConfiguration();
+		float[] midpoint = getCachedMidpoint();
+
+		MapLocation transformed = null;
+		switch (configuration) {
+		case ROTATION:
+			transformed = Util.rotateAround(midpoint, target);
+			break;
+		case HORIZONTAL_REFLECTION:
+			transformed = Util.reflectHorizontallyAccross(midpoint, target);
+			break;
+		case VERTICAL_REFLECTION:
+			transformed = Util.reflectVerticallyAccross(midpoint, target);
+			break;
+		case DIAGONAL_REFLECTION:
+			transformed = Util.reflectDiagonallyAccross(midpoint, target);
+			break;
+		case INVERSE_DIAGONAL_REFLECTION:
+			transformed = Util.reflectInvDiagonallyAccross(midpoint, target);
+			break;
+		default:
+			// this should never happen
+			transformed = Util.rotateAround(midpoint, target);
+			break;
+		}
+
+		return BroadcastInterface.readDistance(rc, transformed.x, transformed.y);
+	}
+
+	// caches the map configuration, since it (probably) won't change.
+	private MapConfiguration getMapConfiguration() throws GameActionException {
+		if (cachedConfiguration != null) {
+			return cachedConfiguration;
+		}
+		// we can only pick one map configuration, so these are given in trump order
+		int bitmask = BroadcastInterface.getConfigurationBitmask(rc);
+		if (Util.decodeRotation(bitmask)) {
+			cachedConfiguration = Util.MapConfiguration.ROTATION;
+		} else if (Util.decodeHorizontalReflection(bitmask)) {
+			cachedConfiguration = Util.MapConfiguration.HORIZONTAL_REFLECTION;
+		} else if (Util.decodeVerticalReflection(bitmask)) {
+			cachedConfiguration = Util.MapConfiguration.VERTICAL_REFLECTION;
+		} else if (Util.decodeDiagonalReflection(bitmask)) {
+			cachedConfiguration = Util.MapConfiguration.DIAGONAL_REFLECTION;
+		} else if (Util.decodeReverseDiagonalReflection(bitmask)) {
+			cachedConfiguration = Util.MapConfiguration.INVERSE_DIAGONAL_REFLECTION;
+		}
+
+		return cachedConfiguration;
+	}
+
+	private float[] getCachedMidpoint() throws GameActionException {
+		if (cachedMidpoint != null) {
+			return cachedMidpoint;
+		}
+
+		return cachedMidpoint = BroadcastInterface.getConfigurationMidpoint(rc);
+	}
+
+	private MapConfiguration cachedConfiguration = null;
+	private float[] cachedMidpoint = null;
 }

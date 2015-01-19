@@ -46,8 +46,8 @@ public class HQHandler extends BaseBuildingHandler {
 		boolean isDiagonalReflection = checkIsDiagonalReflection(midpoint, ourHq, theirHq, ourTowers, theirTowers);
 		boolean isReverseDiagonalReflection = checkIsReverseDiagonalReflection(midpoint, ourHq, theirHq, ourTowers, theirTowers);
 		boolean isRotation = checkIsRotation(midpoint, ourHq, theirHq, ourTowers, theirTowers);
-		BroadcastInterface.setMapConfiguration(rc, midpoint, isVerticalReflection, isHorizontalReflection, isDiagonalReflection,
-				isReverseDiagonalReflection, isRotation);
+		BroadcastInterface.setMapConfiguration(rc, midpoint, Util.encodeMapConfigurationAsBitmask(isVerticalReflection,
+				isHorizontalReflection, isDiagonalReflection, isReverseDiagonalReflection, isRotation));
 	}
 
 	private float[] findMidpoint(MapLocation ourHq, MapLocation theirHq) {

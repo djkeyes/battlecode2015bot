@@ -173,11 +173,11 @@ public abstract class BaseRobotHandler {
 
 	private void updateDistances(MapLocation randomLoc) throws GameActionException {
 		// find the smallest non-zero distance (zero indicates unknown distance)
-		int curDist = BroadcastInterface.readDistance(rc, randomLoc.x, randomLoc.y);
+		int curDist = getDistanceFromOurHq(randomLoc);
 		int minDist = Integer.MAX_VALUE;
 		for (Direction d : Util.actualDirections) {
 			MapLocation nextLoc = randomLoc.add(d);
-			int dist = BroadcastInterface.readDistance(rc, nextLoc.x, nextLoc.y);
+			int dist = getDistanceFromOurHq(nextLoc);
 			if (dist != 0) {
 				minDist = Math.min(minDist, dist);
 			}
@@ -276,7 +276,7 @@ public abstract class BaseRobotHandler {
 				for (Direction adjDir : Util.actualDirections) {
 					MapLocation adjLoc = rc.getLocation().add(adjDir);
 					if (rc.canMove(adjDir)) {
-						int adjDist = BroadcastInterface.readDistance(rc, adjLoc.x, adjLoc.y);
+						int adjDist = getDistanceFromOurHq(adjLoc);
 						if (adjDist > maxDist) {
 							maxDist = adjDist;
 							nextDir = adjDir;
@@ -303,7 +303,7 @@ public abstract class BaseRobotHandler {
 				for (Direction adjDir : Util.actualDirections) {
 					MapLocation adjLoc = rc.getLocation().add(adjDir);
 					if (rc.canMove(adjDir)) {
-						int adjDist = BroadcastInterface.readDistance(rc, adjLoc.x, adjLoc.y);
+						int adjDist = getDistanceFromOurHq(adjLoc);
 						if (adjDist != 0 && adjDist < minDist) {
 							minDist = adjDist;
 							nextDir = adjDir;
@@ -399,4 +399,13 @@ public abstract class BaseRobotHandler {
 	// TODO: add a building placement-finding method that intentionally blocks opponents to fuck up their pathfinding (supply depots
 	// are the best option for this)
 	// TODO: add some space to the broadcast system that records planned movement, so that robots don't crash into each other.
+
+	public int getDistanceFromOurHq(MapLocation target) throws GameActionException{
+		return BroadcastInterface.readDistance(rc, target.x, target.y);
+	}
+	public int getDistanceFromEnemyHq(MapLocation target) throws GameActionException{
+		
+		return BroadcastInterface.readDistance(rc, target.x, target.y);
+	}
+	
 }

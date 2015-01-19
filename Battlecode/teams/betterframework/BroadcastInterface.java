@@ -126,25 +126,22 @@ public class BroadcastInterface {
 	private static final int configurationBitmaskChannel = 58626;
 	private static final int xMidpointChannel = 58627;
 	private static final int yMidpointChannel = 58628;
-	
-	private static final int VERTICAL_REFLECTION_OFFSET = 0;
-	private static final int HORIZONTAL_REFLECTION_OFFSET = 1;
-	private static final int DIAGONAL_REFLECTION_OFFSET = 2;
-	private static final int REVERSE_DIAGONAL_REFLECTION_OFFSET = 3;
-	private static final int ROTATION_OFFSET = 4;
-	public static void setMapConfiguration(RobotController rc, float[] midpoint, boolean isVerticalReflection, boolean isHorizontalReflection,
-			boolean isDiagonalReflection, boolean isReverseDiagonalReflection, boolean isRotation) throws GameActionException {
-		int bitmask = 0;
-		bitmask |= (isVerticalReflection?1:0) << VERTICAL_REFLECTION_OFFSET;
-		bitmask |= (isHorizontalReflection?1:0) << HORIZONTAL_REFLECTION_OFFSET;
-		bitmask |= (isDiagonalReflection?1:0) << DIAGONAL_REFLECTION_OFFSET;
-		bitmask |= (isReverseDiagonalReflection?1:0) << REVERSE_DIAGONAL_REFLECTION_OFFSET;
-		bitmask |= (isRotation?1:0) << ROTATION_OFFSET;
 
-		rc.broadcast(configurationBitmaskChannel, bitmask);
+	public static void setMapConfiguration(RobotController rc, float[] midpoint, int configurationBitmask)
+			throws GameActionException {
+		rc.broadcast(configurationBitmaskChannel, configurationBitmask);
 		// we're storing the midpoint (a float which might end in 0.5) as an int here
 		// so be sure to convert it back during lookup!
-		rc.broadcast(xMidpointChannel,Float.floatToIntBits(midpoint[0]));
+		rc.broadcast(xMidpointChannel, Float.floatToIntBits(midpoint[0]));
 		rc.broadcast(yMidpointChannel, Float.floatToIntBits(midpoint[1]));
+	}
+
+	public static int getConfigurationBitmask(RobotController rc) throws GameActionException {
+		return rc.readBroadcast(configurationBitmaskChannel);
+	}
+	public static float[] getConfigurationMidpoint(RobotController rc) throws GameActionException {
+		float x = Float.intBitsToFloat(rc.readBroadcast(xMidpointChannel));
+		float y = Float.intBitsToFloat(rc.readBroadcast(yMidpointChannel));
+		return new float[]{x, y};
 	}
 }
