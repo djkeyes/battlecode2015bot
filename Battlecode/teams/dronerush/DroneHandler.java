@@ -5,11 +5,9 @@ import java.util.List;
 
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
-import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
-import battlecode.common.RobotType;
 
 public class DroneHandler extends BaseRobotHandler {
 
@@ -83,28 +81,13 @@ public class DroneHandler extends BaseRobotHandler {
 			return false;
 		}
 
-		private boolean isNearEnemy(MapLocation nextLoc){
+		private boolean isNearEnemy(MapLocation nextLoc) {
 			// note: this method is temporally coupled to the enemyRobots, enemyTowers, and enemyHq variables.
 			// if they haven't been updated to reflect the current round, this method WILL return inaccurate results!
-			for (RobotInfo enemy : enemyRobots) {
-				if (nextLoc.distanceSquaredTo(enemy.location) <= enemy.type.attackRadiusSquared) {
-					return true;
-				}
+			if(inRobotRange(nextLoc, enemyRobots)){
+				return true;
 			}
-			for (MapLocation enemy : enemyTowers) {
-				if (nextLoc.distanceSquaredTo(enemy) <= RobotType.TOWER.attackRadiusSquared) {
-					return true;
-				}
-			}
-			int hqAttackRadius;
-			if(enemyTowers.length >= 5){
-				hqAttackRadius = 52;
-			} else if(enemyTowers.length >= 2){
-				hqAttackRadius = GameConstants.HQ_BUFFED_ATTACK_RADIUS_SQUARED;
-			} else {
-				hqAttackRadius = RobotType.HQ.attackRadiusSquared;
-			}
-			if(nextLoc.distanceSquaredTo(enemyHq) <= hqAttackRadius){
+			if (inHqOrTowerRange(nextLoc, enemyTowers, enemyHq)) {
 				return true;
 			}
 			return false;

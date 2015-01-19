@@ -286,19 +286,41 @@ public abstract class BaseRobotHandler {
 	}
 
 	public class MoveTowardEnemyHq implements Action {
+		boolean avoidEnemies;
+
+		public MoveTowardEnemyHq(boolean avoidEnemies) {
+			this.avoidEnemies = avoidEnemies;
+		}
+
+		// TODO: should we also avoid enemy units here? is that a good strategic decision?
+		// private RobotInfo[] enemyRobots = null;
+		private MapLocation[] enemyTowers = null;
+		private MapLocation enemyHq = null;
+
 		@Override
 		public boolean run() throws GameActionException {
+			if (avoidEnemies) {
+				// the robot with the longest range is the tower, with 24 range
+				// (sqrt(24)+1)^2 ~= 35
+				// enemyRobots = rc.senseNearbyRobots(35, rc.getTeam().opponent());
+				// TODO: the next 2 methods cost 100 and 50 bytecodes respectively. we should cache them in the broadcast array.
+				enemyTowers = rc.senseEnemyTowerLocations();
+				enemyHq = rc.senseEnemyHQLocation();
+			}
+
 			if (rc.isCoreReady()) {
 				int minDist = Integer.MAX_VALUE;
 				Direction nextDir = null;
 				for (Direction adjDir : Util.actualDirections) {
 					MapLocation adjLoc = rc.getLocation().add(adjDir);
 					if (rc.canMove(adjDir)) {
-						int adjDist = getDistanceFromEnemyHq(adjLoc);
-						// 0 indicates unexplored tiles
-						if (adjDist != 0 && adjDist < minDist) {
-							minDist = adjDist;
-							nextDir = adjDir;
+						if (!avoidEnemies || !inHqOrTowerRange(adjLoc, enemyTowers, enemyHq)) {
+							int adjDist = getDistanceFromEnemyHq(adjLoc);
+							// 0 indicates unexplored tiles
+							if (adjDist != 0 && adjDist < minDist) {
+								minDist = adjDist;
+								nextDir = adjDir;
+							}
 						}
 					}
 				}
@@ -403,16 +425,32 @@ public abstract class BaseRobotHandler {
 		}
 	}
 
-	public boolean inHqOrTowerRange(MapLocation loc) {
-		// TODO: if there are more than 4 towers, the HQ does AOE, so we need to increase the effective range
-		MapLocation enemyHq = rc.senseEnemyHQLocation();
-		if (loc.distanceSquaredTo(enemyHq) <= RobotType.HQ.attackRadiusSquared) {
-			return true;
+	public boolean inRobotRange(MapLocation loc, RobotInfo[] robots) {
+		for (RobotInfo enemy : robots) {
+			if (loc.distanceSquaredTo(enemy.location) <= enemy.type.attackRadiusSquared) {
+				return true;
+			}
 		}
-		for (MapLocation enemyTower : rc.senseEnemyTowerLocations()) {
+		return false;
+	}
+
+	// enemyTowers and enemyHq are parameters in case you already have a cached copy of them
+	public boolean inHqOrTowerRange(MapLocation loc, MapLocation[] enemyTowers, MapLocation enemyHq) {
+		for (MapLocation enemyTower : enemyTowers) {
 			if (loc.distanceSquaredTo(enemyTower) <= RobotType.TOWER.attackRadiusSquared) {
 				return true;
 			}
+		}
+		int hqAttackRadius;
+		if (enemyTowers.length >= 5) {
+			hqAttackRadius = 52;
+		} else if (enemyTowers.length >= 2) {
+			hqAttackRadius = GameConstants.HQ_BUFFED_ATTACK_RADIUS_SQUARED;
+		} else {
+			hqAttackRadius = RobotType.HQ.attackRadiusSquared;
+		}
+		if (loc.distanceSquaredTo(enemyHq) <= hqAttackRadius) {
+			return true;
 		}
 		return false;
 	}
