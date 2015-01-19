@@ -1,5 +1,6 @@
 package betterframework;
 
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 
@@ -133,61 +134,44 @@ public abstract class BaseRobotHandler {
 	}
 
 	protected void doPathfinding() throws GameActionException {
-		// this is a randomized pathfinding algorithm--it's much less efficient than a distributed BFS, but it's more resilient to
-		// robot failure/death/bytecode limits
-
+		// this method tends to use between 1000 and 3000 bytecodes per iteration =/
 		// pick a location, then do pathfinding
-		MapLocation randomLoc;
-		// generate random tiles until we get one that's actually visible
-		while (rc.senseTerrainTile(randomLoc = getRandomPathfindingTile()) != TerrainTile.NORMAL)
-			;
-		updateDistances(randomLoc);
-	}
-
-	private MapLocation getRandomPathfindingTile() {
-		// what is a good place to pathfind?
-		// well, locations near us seem good
-		// also locations near the hq seem good (since we start there)
-		// also eventually we'll want to get every location
-		// so pick one of those 3 options
-		double result = gen.nextDouble();
-		if (result < 1. / 3.) {
-			// pick one of the tiles near us
-			return getLocationNear(rc.getLocation());
-		} else if (result < 2. / 3.) {
-			// pick a tile near hq
-			return getLocationNear(ourHq);
-		} else {
-			// pick a tile anywhere
-			int x = gen.nextInt(2 * GameConstants.MAP_MAX_WIDTH + 1) - GameConstants.MAP_MAX_WIDTH;
-			int y = gen.nextInt(2 * GameConstants.MAP_MAX_HEIGHT + 1) - GameConstants.MAP_MAX_HEIGHT;
-			return ourHq.add(x, y);
+		int[] coords = BroadcastInterface.dequeuePathfindingQueue(rc);
+		if (coords != null) {
+			MapLocation curLoc = new MapLocation(coords[0], coords[1]);
+			updateDistances(curLoc);
 		}
 	}
 
-	private MapLocation getLocationNear(MapLocation orig) {
-		int x = gen.nextInt(7) - 5;
-		int y = gen.nextInt(7) - 5;
-		return orig.add(x, y);
-	}
-
-	private void updateDistances(MapLocation randomLoc) throws GameActionException {
+	private void updateDistances(MapLocation curLoc) throws GameActionException {
 		// find the smallest non-zero distance (zero indicates unknown distance)
-		int curDist = getDistanceFromOurHq(randomLoc);
-		int minDist = Integer.MAX_VALUE;
+		// int startBytecodes = Clock.getBytecodeNum();
+		int curDist = getDistanceFromOurHq(curLoc);
+		// 287
+		boolean hasUnknownTiles = false;
 		for (Direction d : Util.actualDirections) {
-			MapLocation nextLoc = randomLoc.add(d);
+			MapLocation nextLoc = curLoc.add(d);
 			int dist = getDistanceFromOurHq(nextLoc);
-			if (dist != 0) {
-				minDist = Math.min(minDist, dist);
+			TerrainTile tileType = rc.senseTerrainTile(nextLoc);
+			if (tileType == TerrainTile.NORMAL) {
+				if (dist == 0 || dist > curDist + 1) {
+					BroadcastInterface.setDistance(rc, nextLoc.x, nextLoc.y, curDist + 1);
+					BroadcastInterface.enqueuePathfindingQueue(rc, nextLoc.x, nextLoc.y);
+				}
+			} else if (tileType == TerrainTile.UNKNOWN) {
+				hasUnknownTiles = true;
+			}
+
+			if (Clock.getBytecodeNum() > maxBytecodesToUse()) {
+				// if we run out of bytecodes, end early and let someone else do the rest
+				hasUnknownTiles = true;
+				break;
 			}
 		}
-		if (minDist < Integer.MAX_VALUE) {
-			if (curDist == 0 || minDist < curDist) {
-				int dist = minDist + 1;
-				BroadcastInterface.setDistance(rc, randomLoc.x, randomLoc.y, dist);
-			}
+		if (hasUnknownTiles) {
+			BroadcastInterface.enqueuePathfindingQueue(rc, curLoc.x, curLoc.y);
 		}
+		// System.out.println("Bytcodes used for 1 update iteration: " + (Clock.getBytecodeNum() - startBytecodes));
 	}
 
 	public void onException(GameActionException ex) {
@@ -228,7 +212,8 @@ public abstract class BaseRobotHandler {
 			} catch (Exception e) {
 				// this should be fixed. if it hasn't happened for several commits, just delete these lines.
 				// I think this happens when a unit misses the turn change (too many bytecodes)
-				System.out.println("exception while sending supplies to " + suppliesToThisLocation + ". Did this robot run out of bytecodes?");
+				System.out.println("exception while sending supplies to " + suppliesToThisLocation
+						+ ". Did this robot run out of bytecodes?");
 				// e.printStackTrace();
 			}
 		}
@@ -319,6 +304,7 @@ public abstract class BaseRobotHandler {
 				}
 				if (nextDir != null) {
 					rc.move(nextDir);
+					System.out.println("advancing!");
 					return true;
 				}
 			}

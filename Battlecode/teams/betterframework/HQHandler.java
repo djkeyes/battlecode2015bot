@@ -19,10 +19,56 @@ public class HQHandler extends BaseBuildingHandler {
 
 	@Override
 	public void init() throws GameActionException {
-		// seed the distances
+		// seed the distances for pathfinding
 		BroadcastInterface.setDistance(rc, rc.getLocation().x, rc.getLocation().y, 1);
+		BroadcastInterface.enqueuePathfindingQueue(rc, rc.getLocation().x, rc.getLocation().y);
 
 		checkIfRotatedOrReflected();
+	}
+
+	@Override
+	public int maxBytecodesToUse() {
+		return 9001;
+	}
+
+	@Override
+	public List<Action> chooseActions() throws GameActionException {
+		atBeginningOfTurn();
+
+		LinkedList<Action> result = new LinkedList<Action>();
+		result.add(attack);
+		if (BroadcastInterface.getRobotCount(rc, RobotType.BEAVER) < 10) {
+			result.add(makeBeavers);
+		}
+		return result;
+	}
+
+	private void atBeginningOfTurn() throws GameActionException {
+		// the HQ is guaranteed to run first
+		// so if you want to run code exactly once with a high priority, run it here
+
+		countUnits();
+
+		determineAttackSignal();
+
+		// // for debugging, print out a portion of the pathfinding queue
+		// MapLocation hq = rc.senseHQLocation();
+		// if (Clock.getRoundNum() % 50 == 0) {
+		// System.out.println("round: " + Clock.getRoundNum());
+		// int minRow = -5;
+		// int minCol = -5;
+		// int maxRow = 5;
+		// int maxCol = 5;
+		// for (int row = minRow; row <= maxRow; row++) {
+		// for (int col = minCol; col <= maxCol; col++) {
+		// int curX = hq.x + col;
+		// int curY = hq.y + row;
+		// int dist = BroadcastInterface.readDistance(rc, curX, curY);
+		// System.out.print(dist + ",\t");
+		// }
+		// System.out.println();
+		// }
+		// }
 	}
 
 	private void checkIfRotatedOrReflected() throws GameActionException {
@@ -214,56 +260,6 @@ public class HQHandler extends BaseBuildingHandler {
 		}
 
 		return true;
-	}
-
-	@Override
-	public int maxBytecodesToUse() {
-		return 9001;
-	}
-
-	@Override
-	public void onExcessBytecodes() throws GameActionException {
-		doPathfinding();
-	}
-
-	@Override
-	public List<Action> chooseActions() throws GameActionException {
-		atBeginningOfTurn();
-
-		LinkedList<Action> result = new LinkedList<Action>();
-		result.add(attack);
-		if (BroadcastInterface.getRobotCount(rc, RobotType.BEAVER) < 10) {
-			result.add(makeBeavers);
-		}
-		return result;
-	}
-
-	private void atBeginningOfTurn() throws GameActionException {
-		// the HQ is guaranteed to run first
-		// so if you want to run code exactly once with a high priority, run it here
-
-		countUnits();
-
-		determineAttackSignal();
-
-		// // for debugging, print out a portion of the pathfinding queue
-		// MapLocation hq = rc.senseHQLocation();
-		// if (Clock.getRoundNum() % 50 == 0) {
-		// System.out.println("round: " + Clock.getRoundNum());
-		// int minRow = -5;
-		// int minCol = -5;
-		// int maxRow = 5;
-		// int maxCol = 5;
-		// for (int row = minRow; row <= maxRow; row++) {
-		// for (int col = minCol; col <= maxCol; col++) {
-		// int curX = hq.x + col;
-		// int curY = hq.y + row;
-		// int dist = BroadcastInterface.readDistance(rc, curX, curY);
-		// System.out.print(dist + ",\t");
-		// }
-		// System.out.println();
-		// }
-		// }
 	}
 
 	private static final int DRONES_NEEDED_TO_CHARGE = 30;
