@@ -19,36 +19,21 @@ public class LauncherHandler extends BaseBuildingHandler {
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
 
-		// start by pathing away from hq to protect drones
 		// once we can estimate the distance to the opponent's hq, travel toward it
-		// TODO: add pathfinding things to generate a path to the opponent's hq, based on map symmetry
+		// we outrange everything, so we probably don't need to wait for support
+		// TODO: wait for a launcher attack signal
+		// but pending that, path from our hq to protect drones
 
 		LinkedList<Action> result = new LinkedList<Action>();
 		result.add(missileAttack);
-		// result.add(scout);
-		// move blindly toward hq TODO: implement & use good pathfinding that paths toward enemy hq
-		result.add(new Action() {
-			@Override
-			public boolean run() throws GameActionException {
-				if (rc.isCoreReady()) {
-					Direction[] oppHqDirs = Util.getDirectionsToward(rc.getLocation(), rc.senseEnemyHQLocation());
-					for (Direction d : oppHqDirs) {
-						MapLocation nextLoc = rc.getLocation().add(d);
-						if (rc.canMove(d) && !inHqOrTowerRange(nextLoc)) {
-							rc.move(d);
-							return true;
-						}
-					}
-				}
-				return false;
-			}
-
-		});
+		result.add(advance);
+		result.add(scout);
 		return result;
 	}
 
 	private final Action missileAttack = new MissileAttack();
 	private final Action scout = new ScoutOutward();
+	private final Action advance = new MoveTowardEnemyHq();
 
 	private final class MissileAttack implements Action {
 

@@ -19,6 +19,7 @@ public class SoldierHandler extends BaseRobotHandler {
 		// defending is weird. it doesn't make sense to stay in one place, but it doesn't make sense to move far away either. as a
 		// happy medium, do on a coin flip.
 		if (BroadcastInterface.readAttackMode(rc) || gen.nextDouble() < 0.5) {
+			result.add(advance);
 			result.add(scout);
 		} else {
 			result.add(retreat);
@@ -28,5 +29,6 @@ public class SoldierHandler extends BaseRobotHandler {
 
 	private final Action attack = new Attack();
 	private final Action scout = new ScoutOutward();
+	private final Action advance = new MoveTowardEnemyHq();
 	private final Action retreat = new Retreat();
 }

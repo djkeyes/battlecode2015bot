@@ -16,10 +16,6 @@ public class MinerHandler extends BaseRobotHandler {
 	private final Action scout = new ScoutOutward();
 	private final Action attack = new Attack();
 
-	// private final Action attack = new Attack();
-	// private final Action retreat = new Retreat();
-	// private final Action scout = new Scout();
-
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
 		LinkedList<Action> result = new LinkedList<Action>();

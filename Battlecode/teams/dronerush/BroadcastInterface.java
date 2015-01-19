@@ -1,5 +1,7 @@
 package dronerush;
 
+import java.util.LinkedList;
+
 import battlecode.common.GameActionException;
 import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
@@ -19,6 +21,13 @@ public class BroadcastInterface {
 	// 0-20: number of each robot
 	// 21-57620: distance to opponent HQ of each map tile--maybe we should also have distance from our HQ?
 	// 58625: attack/retreat signal
+	// 58626: bitmask containing which configuration the map is in (reflection, rotation, etc)
+	// 58627: x midpoint of the map
+	// 58628: y midpoint of the map
+	// 58629: pathfinding queue head address
+	// 58630: pathfinding queue tail address
+	// 58631: pathfinding queue current size
+	// 58632-59631: pathfinding queue
 
 	// is there a better/more efficient way to do this? we could use an enummap, but i think that's less efficient.
 	private static int getRobotIndex(RobotType type) {
@@ -118,5 +127,110 @@ public class BroadcastInterface {
 
 	public static boolean readAttackMode(RobotController rc) throws GameActionException {
 		return rc.readBroadcast(atkChannel) == 1;
+	}
+
+	private static final int configurationBitmaskChannel = 58626;
+	private static final int xMidpointChannel = 58627;
+	private static final int yMidpointChannel = 58628;
+
+	public static void setMapConfiguration(RobotController rc, float[] midpoint, int configurationBitmask)
+			throws GameActionException {
+		rc.broadcast(configurationBitmaskChannel, configurationBitmask);
+		// we're storing the midpoint (a float which might end in 0.5) as an int here
+		// so be sure to convert it back during lookup!
+		rc.broadcast(xMidpointChannel, Float.floatToIntBits(midpoint[0]));
+		rc.broadcast(yMidpointChannel, Float.floatToIntBits(midpoint[1]));
+	}
+
+	public static int getConfigurationBitmask(RobotController rc) throws GameActionException {
+		return rc.readBroadcast(configurationBitmaskChannel);
+	}
+
+	public static float[] getConfigurationMidpoint(RobotController rc) throws GameActionException {
+		float x = Float.intBitsToFloat(rc.readBroadcast(xMidpointChannel));
+		float y = Float.intBitsToFloat(rc.readBroadcast(yMidpointChannel));
+		return new float[] { x, y };
+	}
+
+	// pathfinding
+
+	private static final int pfqHeadAddr = 58629;
+	private static final int pfqTailAddr = 58630;
+	private static final int pfqSizeAddr = 58631;
+	private static final int pfqBaseAddr = 58632;
+	private static final int PFQ_CAPACITY = 1000;
+
+	// TODO: if we could buffer and dequeue things several at a time, it would probably save us some bytecodes
+	// note: daniel tried doing this for enqueuing, but the cost of the linked list hardly made it worth it
+	// by reducing the number of broadcasts needed for head updates
+	public static int[] dequeuePathfindingQueue(RobotController rc) throws GameActionException {
+		int size = rc.readBroadcast(pfqSizeAddr);
+		if (size > 0) {
+			int head = rc.readBroadcast(pfqHeadAddr);
+			rc.broadcast(pfqHeadAddr, (head + 1) % PFQ_CAPACITY);
+			rc.broadcast(pfqSizeAddr, size - 1);
+
+			// to be compact, we store the coordinates as two concatenated shorts
+			int combined = rc.readBroadcast(pfqBaseAddr + head);
+			int x = (combined >> 16);
+			int y = (short) (0xFFFF & combined);
+			return new int[] { x, y };
+		}
+		return null;
+	}
+
+	public static boolean enqueuePathfindingQueue(RobotController rc, int x, int y) throws GameActionException {
+		int size = rc.readBroadcast(pfqSizeAddr);
+		if (size < PFQ_CAPACITY) {
+			int tail = rc.readBroadcast(pfqTailAddr);
+			rc.broadcast(pfqTailAddr, (tail + 1) % PFQ_CAPACITY);
+			rc.broadcast(pfqSizeAddr, size + 1);
+
+			int combined = (x << 16) | (0xFFFF & y);
+			rc.broadcast(pfqBaseAddr + tail, combined);
+			return true;
+		}
+		// TODO: handle the case when the queue is full
+		System.out.println("The pathfinding queue is full. Maybe you should increase the size, or investigate why it filled up.");
+		return false;
+	}
+
+	public static boolean enqueueAllInPathfindingQueue(RobotController rc, LinkedList<MapLocation> toEnqueue)
+			throws GameActionException {
+		int size = rc.readBroadcast(pfqSizeAddr);
+		int bufferSize = toEnqueue.size();
+
+		if (size + bufferSize <= PFQ_CAPACITY) {
+			int tail = rc.readBroadcast(pfqTailAddr);
+			rc.broadcast(pfqTailAddr, (tail + bufferSize) % PFQ_CAPACITY);
+			rc.broadcast(pfqSizeAddr, size + bufferSize);
+
+			for (MapLocation cur : toEnqueue) {
+				int combined = (cur.x << 16) | (0xFFFF & cur.y);
+				rc.broadcast(pfqBaseAddr + tail, combined);
+				tail++;
+				if (tail > PFQ_CAPACITY) {
+					tail -= PFQ_CAPACITY;
+				}
+			}
+
+			return true;
+		}
+		// TODO: handle the case when the queue is full
+		return false;
+	}
+
+	private static void printPfq(RobotController rc) throws GameActionException {
+		int head = rc.readBroadcast(pfqHeadAddr);
+		int tail = rc.readBroadcast(pfqTailAddr);
+		int size = rc.readBroadcast(pfqSizeAddr);
+		// this doesn't handle the case when tail < head
+		StringBuilder out = new StringBuilder();
+		for (int i = head; i < tail; i++) {
+			out.append(rc.readBroadcast(pfqBaseAddr + i) + ", ");
+		}
+		out.append("head=" + head + ", tail=" + tail + ", size=" + size);
+		out.append("\n");
+		System.out.println(out.toString());
 	}
 }

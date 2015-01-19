@@ -219,17 +219,17 @@ public class BroadcastInterface {
 		return false;
 	}
 
-	// private static void printPfq(RobotController rc) throws GameActionException {
-	// int head = rc.readBroadcast(pfqHeadAddr);
-	// int tail = rc.readBroadcast(pfqTailAddr);
-	// int size = rc.readBroadcast(pfqSizeAddr);
-	// // this doesn't handle the case when tail < head
-	// StringBuilder out = new StringBuilder();
-	// for (int i = head; i < tail; i++) {
-	// out.append(rc.readBroadcast(pfqBaseAddr + i) + ", ");
-	// }
-	// out.append("head=" + head + ", tail=" + tail + ", size=" + size);
-	// out.append("\n");
-	// System.out.println(out.toString());
-	// }
+	private static void printPfq(RobotController rc) throws GameActionException {
+		int head = rc.readBroadcast(pfqHeadAddr);
+		int tail = rc.readBroadcast(pfqTailAddr);
+		int size = rc.readBroadcast(pfqSizeAddr);
+		// this doesn't handle the case when tail < head
+		StringBuilder out = new StringBuilder();
+		for (int i = head; i < tail; i++) {
+			out.append(rc.readBroadcast(pfqBaseAddr + i) + ", ");
+		}
+		out.append("head=" + head + ", tail=" + tail + ", size=" + size);
+		out.append("\n");
+		System.out.println(out.toString());
+	}
 }

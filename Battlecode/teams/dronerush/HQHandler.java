@@ -18,8 +18,11 @@ public class HQHandler extends BaseBuildingHandler {
 
 	@Override
 	public void init() throws GameActionException {
-		// seed the distances
+		// seed the distances for pathfinding
 		BroadcastInterface.setDistance(rc, rc.getLocation().x, rc.getLocation().y, 1);
+		BroadcastInterface.enqueuePathfindingQueue(rc, rc.getLocation().x, rc.getLocation().y);
+
+		checkIfRotatedOrReflected();
 	}
 
 	@Override
@@ -28,17 +31,12 @@ public class HQHandler extends BaseBuildingHandler {
 	}
 
 	@Override
-	public void onExcessBytecodes() throws GameActionException {
-		doPathfinding();
-	}
-
-	@Override
 	public List<Action> chooseActions() throws GameActionException {
 		atBeginningOfTurn();
 
 		LinkedList<Action> result = new LinkedList<Action>();
 		result.add(attack);
-		if (BroadcastInterface.getRobotCount(rc, RobotType.BEAVER) < 3) {
+		if (BroadcastInterface.getRobotCount(rc, RobotType.BEAVER) < 2) {
 			result.add(makeBeavers);
 		}
 		return result;
@@ -51,35 +49,32 @@ public class HQHandler extends BaseBuildingHandler {
 		countUnits();
 
 		determineAttackSignal();
+	}
 
-		// for debugging, print out a portion of the pathfinding queue
-		// MapLocation hq = rc.senseHQLocation();
-		// if (Clock.getRoundNum() % 50 == 3) {
-		// System.out.println("round: " + Clock.getRoundNum());
-		// BroadcastInterface.printPfq(rc);
-		// int minRow = -13;
-		// int minCol = -7;
-		// int maxRow = 7;
-		// int maxCol = 13;
-		// for (int row = minRow; row <= maxRow; row++) {
-		// for (int col = minCol; col <= maxCol; col++) {
-		// int curX = hq.x + col;
-		// int curY = hq.y + row;
-		// int dist = BroadcastInterface.readDistance(rc, curX, curY);
-		// // boolean inQueue = false;
-		// // LinkedList<int[]> pfq = BroadcastInterface.getPfq(rc);
-		// // for (int[] coord : pfq) {
-		// // if (coord[0] == curX && coord[1] == curY) {
-		// // inQueue = true;
-		// // break;
-		// // }
-		// // }
-		//
-		// System.out.print(dist + /* (inQueue ? "*" : "") + */",\t");
-		// }
-		// System.out.println();
-		// }
-		// }
+	private void checkIfRotatedOrReflected() throws GameActionException {
+		// infers whether the map is a rotation or a reflection
+		// this is relevant for pathfinding and movement
+
+		// we can figure this out at the beginning of the game by comparing the arrangement of our towers to our opponent's
+		// however, it IS possible to be wrong. some maps may have identical tower placements whether they are rotated or reflected,
+		// and we would need to check the terrain and ore distributions to get a better idea
+
+		MapLocation ourHq = rc.senseHQLocation();
+		MapLocation theirHq = rc.senseEnemyHQLocation();
+		MapLocation[] ourTowers = rc.senseTowerLocations();
+		MapLocation[] theirTowers = rc.senseEnemyTowerLocations();
+
+		// this is represented as a float because we eventually store it in 32-bits in the broadcast array
+		float[] midpoint = Util.findMidpoint(ourHq, theirHq);
+		boolean isVerticalReflection = Util.checkIsVerticalReflection(midpoint, ourHq, theirHq, ourTowers, theirTowers);
+		boolean isHorizontalReflection = Util.checkIsHorizontalReflection(midpoint, ourHq, theirHq, ourTowers, theirTowers);
+		// BOTH diagonals
+		boolean isDiagonalReflection = Util.checkIsDiagonalReflection(midpoint, ourHq, theirHq, ourTowers, theirTowers);
+		boolean isReverseDiagonalReflection = Util.checkIsReverseDiagonalReflection(midpoint, ourHq, theirHq, ourTowers,
+				theirTowers);
+		boolean isRotation = Util.checkIsRotation(midpoint, ourHq, theirHq, ourTowers, theirTowers);
+		BroadcastInterface.setMapConfiguration(rc, midpoint, Util.encodeMapConfigurationAsBitmask(isVerticalReflection,
+				isHorizontalReflection, isDiagonalReflection, isReverseDiagonalReflection, isRotation));
 	}
 
 	private static final int DRONES_NEEDED_TO_CHARGE = 50;
@@ -122,7 +117,6 @@ public class HQHandler extends BaseBuildingHandler {
 
 	private final Action attack = new HqAttack();
 	private final Action makeBeavers = new SpawnUnit(RobotType.BEAVER, false);
-
 
 	private final class HqAttack implements Action {
 		@Override

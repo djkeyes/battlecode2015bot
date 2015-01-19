@@ -12,6 +12,7 @@ import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
 import battlecode.common.RobotType;
 import battlecode.common.TerrainTile;
+import dronerush.Util.MapConfiguration;
 
 public abstract class BaseRobotHandler {
 
@@ -65,13 +66,10 @@ public abstract class BaseRobotHandler {
 
 	protected RobotController rc;
 	protected Random gen;
-	private MapLocation ourHq = null;
 
 	protected BaseRobotHandler(RobotController rc) {
 		this.rc = rc;
 		gen = new Random(rc.getID());
-
-		ourHq = rc.senseHQLocation();
 	}
 
 	public int maxBytecodesToUse() {
@@ -133,61 +131,46 @@ public abstract class BaseRobotHandler {
 	}
 
 	protected void doPathfinding() throws GameActionException {
-		// this is a randomized pathfinding algorithm--it's much less efficient than a distributed BFS, but it's more resilient to
-		// robot failure/death/bytecode limits
-
+		// this method tends to use between 1000 and 3000 bytecodes per iteration =/
 		// pick a location, then do pathfinding
-		MapLocation randomLoc;
-		// generate random tiles until we get one that's actually visible
-		while (rc.senseTerrainTile(randomLoc = getRandomPathfindingTile()) != TerrainTile.NORMAL)
-			;
-		updateDistances(randomLoc);
-	}
-
-	private MapLocation getRandomPathfindingTile() {
-		// what is a good place to pathfind?
-		// well, locations near us seem good
-		// also locations near the hq seem good (since we start there)
-		// also eventually we'll want to get every location
-		// so pick one of those 3 options
-		double result = gen.nextDouble();
-		if (result < 1. / 3.) {
-			// pick one of the tiles near us
-			return getLocationNear(rc.getLocation());
-		} else if (result < 2. / 3.) {
-			// pick a tile near hq
-			return getLocationNear(ourHq);
-		} else {
-			// pick a tile anywhere
-			int x = gen.nextInt(2 * GameConstants.MAP_MAX_WIDTH + 1) - GameConstants.MAP_MAX_WIDTH;
-			int y = gen.nextInt(2 * GameConstants.MAP_MAX_HEIGHT + 1) - GameConstants.MAP_MAX_HEIGHT;
-			return ourHq.add(x, y);
+		int[] coords = BroadcastInterface.dequeuePathfindingQueue(rc);
+		if (coords != null) {
+			MapLocation curLoc = new MapLocation(coords[0], coords[1]);
+			updateDistances(curLoc);
 		}
 	}
 
-	private MapLocation getLocationNear(MapLocation orig) {
-		int x = gen.nextInt(7) - 5;
-		int y = gen.nextInt(7) - 5;
-		return orig.add(x, y);
-	}
-
-	private void updateDistances(MapLocation randomLoc) throws GameActionException {
+	private void updateDistances(MapLocation curLoc) throws GameActionException {
 		// find the smallest non-zero distance (zero indicates unknown distance)
-		int curDist = getDistanceFromOurHq(randomLoc);
-		int minDist = Integer.MAX_VALUE;
+		// int startBytecodes = Clock.getBytecodeNum();
+		int curDist = getDistanceFromOurHq(curLoc);
+		// 287
+		boolean hasUnknownTiles = false;
 		for (Direction d : Util.actualDirections) {
-			MapLocation nextLoc = randomLoc.add(d);
+			MapLocation nextLoc = curLoc.add(d);
 			int dist = getDistanceFromOurHq(nextLoc);
-			if (dist != 0) {
-				minDist = Math.min(minDist, dist);
+			TerrainTile tileType = rc.senseTerrainTile(nextLoc);
+			if (tileType == TerrainTile.NORMAL) {
+				if (dist == 0 || dist > curDist + 1) {
+					BroadcastInterface.setDistance(rc, nextLoc.x, nextLoc.y, curDist + 1);
+					BroadcastInterface.enqueuePathfindingQueue(rc, nextLoc.x, nextLoc.y);
+				}
+			} else if (tileType == TerrainTile.UNKNOWN) {
+				hasUnknownTiles = true;
+			}
+
+			if (Clock.getBytecodeNum() > maxBytecodesToUse()) {
+				// if we run out of bytecodes, end early and let someone else do the rest
+				// TODO: in this case, the coordinates really should be added to the front, not the back, of the queue, so that someone
+				// else can pick up where we left off.
+				hasUnknownTiles = true;
+				break;
 			}
 		}
-		if (minDist < Integer.MAX_VALUE) {
-			if (curDist == 0 || minDist < curDist) {
-				int dist = minDist + 1;
-				BroadcastInterface.setDistance(rc, randomLoc.x, randomLoc.y, dist);
-			}
+		if (hasUnknownTiles) {
+			BroadcastInterface.enqueuePathfindingQueue(rc, curLoc.x, curLoc.y);
 		}
+		// System.out.println("Bytcodes used for 1 update iteration: " + (Clock.getBytecodeNum() - startBytecodes));
 	}
 
 	public void onException(GameActionException ex) {
@@ -199,13 +182,23 @@ public abstract class BaseRobotHandler {
 	}
 
 	protected void distributeSupply() throws GameActionException {
+		// if there are a lot of nearby allies, we might run out of bytecodes.
+		// invoking transferSupplies() costs us 500 bytecodes (it's really expensive!)
+		int maxBytecodesForTransfer = maxBytecodesToUse() - 500;
+		if (Clock.getBytecodeNum() > maxBytecodesForTransfer) {
+			return;
+		}
 		RobotInfo[] nearbyAllies = rc.senseNearbyRobots(rc.getLocation(), GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED,
 				rc.getTeam());
 		double lowestSupply = rc.getSupplyLevel();
 		double transferAmount = 0;
 		MapLocation suppliesToThisLocation = null;
 		for (RobotInfo ri : nearbyAllies) {
-			if (ri.type != RobotType.MISSILE) {
+			if (Clock.getBytecodeNum() > maxBytecodesForTransfer) {
+				break;
+			}
+
+			if (ri.type != RobotType.MISSILE) { // missiles don't need supply
 				if (ri.supplyLevel < lowestSupply) {
 					lowestSupply = ri.supplyLevel;
 					transferAmount = (rc.getSupplyLevel() - ri.supplyLevel) / 2;
@@ -219,7 +212,8 @@ public abstract class BaseRobotHandler {
 			} catch (Exception e) {
 				// this should be fixed. if it hasn't happened for several commits, just delete these lines.
 				// I think this happens when a unit misses the turn change (too many bytecodes)
-				System.out.println("exception while sending supplies to " + suppliesToThisLocation);
+				System.out.println("exception while sending supplies to " + suppliesToThisLocation
+						+ ". Did this robot run out of bytecodes?");
 				// e.printStackTrace();
 			}
 		}
@@ -267,18 +261,43 @@ public abstract class BaseRobotHandler {
 	// move this unit to an unexplored square
 	// this is implemented by simple moving further away from the HQ--however, this means it can get stuck in corners
 	public class ScoutOutward implements Action {
-
 		@Override
 		public boolean run() throws GameActionException {
 			if (rc.isCoreReady()) {
 				int maxDist = 0;
 				Direction nextDir = null;
-				for (Direction adjDir : Util.actualDirections) {
+				for (Direction adjDir : Util.getRandomDirectionOrdering(gen)) {
 					MapLocation adjLoc = rc.getLocation().add(adjDir);
 					if (rc.canMove(adjDir)) {
 						int adjDist = getDistanceFromOurHq(adjLoc);
 						if (adjDist > maxDist) {
 							maxDist = adjDist;
+							nextDir = adjDir;
+						}
+					}
+				}
+				if (nextDir != null) {
+					rc.move(nextDir);
+					return true;
+				}
+			}
+			return false;
+		}
+	}
+
+	public class MoveTowardEnemyHq implements Action {
+		@Override
+		public boolean run() throws GameActionException {
+			if (rc.isCoreReady()) {
+				int minDist = Integer.MAX_VALUE;
+				Direction nextDir = null;
+				for (Direction adjDir : Util.actualDirections) {
+					MapLocation adjLoc = rc.getLocation().add(adjDir);
+					if (rc.canMove(adjDir)) {
+						int adjDist = getDistanceFromEnemyHq(adjLoc);
+						// 0 indicates unexplored tiles
+						if (adjDist != 0 && adjDist < minDist) {
+							minDist = adjDist;
 							nextDir = adjDir;
 						}
 					}
@@ -373,9 +392,13 @@ public abstract class BaseRobotHandler {
 
 		private double miningRate(double orePresent, boolean isBeaver) {
 			if (isBeaver) {
-				return Math.min(orePresent, Math.max(Math.min(GameConstants.BEAVER_MINE_MAX, orePresent / (double)GameConstants.BEAVER_MINE_RATE), GameConstants.MINIMUM_MINE_AMOUNT));
+				return Math.min(orePresent, Math.max(
+						Math.min(GameConstants.BEAVER_MINE_MAX, orePresent / (double) GameConstants.BEAVER_MINE_RATE),
+						GameConstants.MINIMUM_MINE_AMOUNT));
 			} else {
-				return Math.min(orePresent, Math.max(Math.min(GameConstants.MINER_MINE_MAX, orePresent / (double) GameConstants.MINER_MINE_RATE), GameConstants.MINIMUM_MINE_AMOUNT));
+				return Math.min(orePresent, Math.max(
+						Math.min(GameConstants.MINER_MINE_MAX, orePresent / (double) GameConstants.MINER_MINE_RATE),
+						GameConstants.MINIMUM_MINE_AMOUNT));
 			}
 		}
 	}
@@ -400,12 +423,70 @@ public abstract class BaseRobotHandler {
 	// are the best option for this)
 	// TODO: add some space to the broadcast system that records planned movement, so that robots don't crash into each other.
 
-	public int getDistanceFromOurHq(MapLocation target) throws GameActionException{
+	public int getDistanceFromOurHq(MapLocation target) throws GameActionException {
 		return BroadcastInterface.readDistance(rc, target.x, target.y);
 	}
-	public int getDistanceFromEnemyHq(MapLocation target) throws GameActionException{
-		
-		return BroadcastInterface.readDistance(rc, target.x, target.y);
+
+	public int getDistanceFromEnemyHq(MapLocation target) throws GameActionException {
+		MapConfiguration configuration = getMapConfiguration();
+		float[] midpoint = getCachedMidpoint();
+
+		MapLocation transformed = null;
+		switch (configuration) {
+		case ROTATION:
+			transformed = Util.rotateAround(midpoint, target);
+			break;
+		case HORIZONTAL_REFLECTION:
+			transformed = Util.reflectHorizontallyAccross(midpoint, target);
+			break;
+		case VERTICAL_REFLECTION:
+			transformed = Util.reflectVerticallyAccross(midpoint, target);
+			break;
+		case DIAGONAL_REFLECTION:
+			transformed = Util.reflectDiagonallyAccross(midpoint, target);
+			break;
+		case INVERSE_DIAGONAL_REFLECTION:
+			transformed = Util.reflectInvDiagonallyAccross(midpoint, target);
+			break;
+		default:
+			// this should never happen
+			transformed = Util.rotateAround(midpoint, target);
+			break;
+		}
+
+		return BroadcastInterface.readDistance(rc, transformed.x, transformed.y);
 	}
-	
+
+	// caches the map configuration, since it (probably) won't change.
+	private MapConfiguration getMapConfiguration() throws GameActionException {
+		if (cachedConfiguration != null) {
+			return cachedConfiguration;
+		}
+		// we can only pick one map configuration, so these are given in trump order
+		int bitmask = BroadcastInterface.getConfigurationBitmask(rc);
+		if (Util.decodeRotation(bitmask)) {
+			cachedConfiguration = Util.MapConfiguration.ROTATION;
+		} else if (Util.decodeHorizontalReflection(bitmask)) {
+			cachedConfiguration = Util.MapConfiguration.HORIZONTAL_REFLECTION;
+		} else if (Util.decodeVerticalReflection(bitmask)) {
+			cachedConfiguration = Util.MapConfiguration.VERTICAL_REFLECTION;
+		} else if (Util.decodeDiagonalReflection(bitmask)) {
+			cachedConfiguration = Util.MapConfiguration.DIAGONAL_REFLECTION;
+		} else if (Util.decodeReverseDiagonalReflection(bitmask)) {
+			cachedConfiguration = Util.MapConfiguration.INVERSE_DIAGONAL_REFLECTION;
+		}
+
+		return cachedConfiguration;
+	}
+
+	private float[] getCachedMidpoint() throws GameActionException {
+		if (cachedMidpoint != null) {
+			return cachedMidpoint;
+		}
+
+		return cachedMidpoint = BroadcastInterface.getConfigurationMidpoint(rc);
+	}
+
+	private MapConfiguration cachedConfiguration = null;
+	private float[] cachedMidpoint = null;
 }

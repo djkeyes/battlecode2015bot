@@ -1,6 +1,5 @@
 package betterframework;
 
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 
@@ -11,6 +10,7 @@ import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
+import battlecode.common.RobotType;
 import battlecode.common.TerrainTile;
 import betterframework.Util.MapConfiguration;
 
@@ -66,20 +66,17 @@ public abstract class BaseRobotHandler {
 
 	protected RobotController rc;
 	protected Random gen;
-	private MapLocation ourHq = null;
 
 	protected BaseRobotHandler(RobotController rc) {
 		this.rc = rc;
 		gen = new Random(rc.getID());
-
-		ourHq = rc.senseHQLocation();
 	}
 
 	public int maxBytecodesToUse() {
 		return 1500;
 	}
 
-	public final void run() {
+	public void run() {
 		// here's the breakdown for this robot:
 		// 1. init(). makes sense.
 		// then we start looping.
@@ -164,6 +161,8 @@ public abstract class BaseRobotHandler {
 
 			if (Clock.getBytecodeNum() > maxBytecodesToUse()) {
 				// if we run out of bytecodes, end early and let someone else do the rest
+				// TODO: in this case, the coordinates really should be added to the front, not the back, of the queue, so that someone
+				// else can pick up where we left off.
 				hasUnknownTiles = true;
 				break;
 			}
@@ -199,12 +198,13 @@ public abstract class BaseRobotHandler {
 				break;
 			}
 
-			if (ri.supplyLevel < lowestSupply) {
-				lowestSupply = ri.supplyLevel;
-				transferAmount = (rc.getSupplyLevel() - ri.supplyLevel) / 2;
-				suppliesToThisLocation = ri.location;
+			if (ri.type != RobotType.MISSILE) { // missiles don't need supply
+				if (ri.supplyLevel < lowestSupply) {
+					lowestSupply = ri.supplyLevel;
+					transferAmount = (rc.getSupplyLevel() - ri.supplyLevel) / 2;
+					suppliesToThisLocation = ri.location;
+				}
 			}
-
 		}
 		if (suppliesToThisLocation != null) {
 			try {
@@ -304,7 +304,6 @@ public abstract class BaseRobotHandler {
 				}
 				if (nextDir != null) {
 					rc.move(nextDir);
-					System.out.println("advancing!");
 					return true;
 				}
 			}
@@ -402,6 +401,20 @@ public abstract class BaseRobotHandler {
 						GameConstants.MINIMUM_MINE_AMOUNT));
 			}
 		}
+	}
+
+	public boolean inHqOrTowerRange(MapLocation loc) {
+		// TODO: if there are more than 4 towers, the HQ does AOE, so we need to increase the effective range
+		MapLocation enemyHq = rc.senseEnemyHQLocation();
+		if (loc.distanceSquaredTo(enemyHq) <= RobotType.HQ.attackRadiusSquared) {
+			return true;
+		}
+		for (MapLocation enemyTower : rc.senseEnemyTowerLocations()) {
+			if (loc.distanceSquaredTo(enemyTower) <= RobotType.TOWER.attackRadiusSquared) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	// utility methods

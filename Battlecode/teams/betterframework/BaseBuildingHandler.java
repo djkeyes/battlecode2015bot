@@ -8,7 +8,6 @@ import battlecode.common.RobotType;
 
 public abstract class BaseBuildingHandler extends BaseRobotHandler {
 
-
 	BaseBuildingHandler(RobotController rc) {
 		super(rc);
 	}

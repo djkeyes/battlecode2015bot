@@ -18,7 +18,7 @@ public class DroneHandler extends BaseRobotHandler {
 	public List<Action> chooseActions() throws GameActionException {
 		LinkedList<Action> result = new LinkedList<Action>();
 		if (BroadcastInterface.readAttackMode(rc)) {
-			// if there are enough drones, attack!
+			// if there are enough drones, charge the opponent!
 			// TODO: attack towers first
 			if (rc.isWeaponReady()) {
 				result.add(attack);
@@ -27,7 +27,7 @@ public class DroneHandler extends BaseRobotHandler {
 				result.add(retreat);
 			}
 		} else {
-			// else stay at home
+			// else skirt the towers and hq so that we can kill other units
 			result.add(attack);
 			result.add(retreat);
 		}

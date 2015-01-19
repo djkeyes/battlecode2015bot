@@ -66,6 +66,12 @@ public class Util {
 		return dirs;
 	}
 
+	public static Direction[] getDirectionsStrictlyToward(MapLocation cur, MapLocation dest) {
+		Direction toDest = cur.directionTo(dest);
+		Direction[] dirs = { toDest, toDest.rotateLeft(), toDest.rotateRight() };
+
+		return dirs;
+	}
 	public static int encodeMapConfigurationAsBitmask(boolean isVerticalReflection, boolean isHorizontalReflection,
 			boolean isDiagonalReflection, boolean isReverseDiagonalReflection, boolean isRotation) {
 		int bitmask = 0;
@@ -123,5 +129,172 @@ public class Util {
 		int dx = Math.round((midpoint[0] - (float) original.x) + (midpoint[1] - (float) original.y));
 		int dy = dx;
 		return original.add(dx, dy);
+	}
+	
+
+	public static float[] findMidpoint(MapLocation ourHq, MapLocation theirHq) {
+		float x = midpoint(ourHq.x, theirHq.x);
+		float y = midpoint(ourHq.y, theirHq.y);
+		return new float[] { x, y };
+	}
+
+	public static float midpoint(float x1, float x2) {
+		return (x1 + x2) / 2f;
+	}
+
+	public static boolean checkIsVerticalReflection(float[] midpoint, MapLocation ourHq, MapLocation theirHq, MapLocation[] ourTowers,
+			MapLocation[] theirTowers) {
+		// to be a vertical reflection, we should be able to flip every tower and hq around the y-midpoint and get an enemy tower
+		float y = midpoint[1];
+		// our hq already matches midpoint, we just need to check the x-coordinate
+		if (ourHq.x != theirHq.x) {
+			return false;
+		}
+
+		for (MapLocation ourTower : ourTowers) {
+			boolean reflectionFound = false;
+			for (MapLocation enemyTower : theirTowers) {
+				if (enemyTower.x == ourTower.x && Math.abs(midpoint(ourTower.y, enemyTower.y) - y) < Util.F_EPSILON) {
+					reflectionFound = true;
+					break;
+				}
+			}
+			if (!reflectionFound) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	public static boolean checkIsHorizontalReflection(float[] midpoint, MapLocation ourHq, MapLocation theirHq,
+			MapLocation[] ourTowers, MapLocation[] theirTowers) {
+		// this is basically the same as the vertical reflection
+		float x = midpoint[0];
+		// our hq already matches midpoint, we just need to check the y-coordinate
+		if (ourHq.y != theirHq.y) {
+			return false;
+		}
+
+		for (MapLocation ourTower : ourTowers) {
+			boolean reflectionFound = false;
+			for (MapLocation enemyTower : theirTowers) {
+				if (enemyTower.y == ourTower.y && Math.abs(midpoint(ourTower.x, enemyTower.x) - x) < Util.F_EPSILON) {
+					reflectionFound = true;
+					break;
+				}
+			}
+			if (!reflectionFound) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	public static boolean checkIsDiagonalReflection(float[] midpoint, MapLocation ourHq, MapLocation theirHq, MapLocation[] ourTowers,
+			MapLocation[] theirTowers) {
+		// this is a little trickier than horizontal and vertical reflections
+		// (x1, y1) and (x2, y2) are diagonally flipped around (mx, my) if
+		// x1 - mx == y2 - my
+		// AND
+		// x2 - mx == y1 - my
+		float mx = midpoint[0];
+		float my = midpoint[1];
+
+		boolean cond1 = Math.abs((ourHq.x - mx) - (theirHq.y - my)) < Util.F_EPSILON;
+		boolean cond2 = Math.abs((theirHq.x - mx) - (ourHq.y - my)) < Util.F_EPSILON;
+		if (!(cond1 && cond2)) {
+			return false;
+		}
+
+		for (MapLocation ourTower : ourTowers) {
+			boolean reflectionFound = false;
+			for (MapLocation enemyTower : theirTowers) {
+				// written on separate lines for clarity
+				cond1 = Math.abs((ourTower.x - mx) - (enemyTower.y - my)) < Util.F_EPSILON;
+				cond2 = Math.abs((enemyTower.x - mx) - (ourTower.y - my)) < Util.F_EPSILON;
+				if (cond1 && cond2) {
+					reflectionFound = true;
+					break;
+				}
+			}
+			if (!reflectionFound) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	public static boolean checkIsReverseDiagonalReflection(float[] midpoint, MapLocation ourHq, MapLocation theirHq,
+			MapLocation[] ourTowers, MapLocation[] theirTowers) {
+		// slightly different from the original diagonal reflection
+		// previous one was flipped around 45 degrees, this one is flipped around 135 degrees
+		// this is a little trickier than horizontal and vertical reflections
+		// (x1, y1) and (x2, y2) are diagonally flipped around (mx, my) if
+		// mx - x1 == y2 - my
+		// AND
+		// x2 - mx == my - y1
+		float mx = midpoint[0];
+		float my = midpoint[1];
+
+		boolean cond1 = Math.abs((mx - ourHq.x) - (theirHq.y - my)) < Util.F_EPSILON;
+		boolean cond2 = Math.abs((theirHq.x - mx) - (my - ourHq.y)) < Util.F_EPSILON;
+		if (!(cond1 && cond2)) {
+			return false;
+		}
+
+		for (MapLocation ourTower : ourTowers) {
+			boolean reflectionFound = false;
+			for (MapLocation enemyTower : theirTowers) {
+				// written on separate lines for clarity
+				cond1 = Math.abs((mx - ourTower.x) - (enemyTower.y - my)) < Util.F_EPSILON;
+				cond2 = Math.abs((enemyTower.x - mx) - (my - ourTower.y)) < Util.F_EPSILON;
+				if (cond1 && cond2) {
+					reflectionFound = true;
+					break;
+				}
+			}
+			if (!reflectionFound) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	public static boolean checkIsRotation(float[] midpoint, MapLocation ourHq, MapLocation theirHq, MapLocation[] ourTowers,
+			MapLocation[] theirTowers) {
+		// we only need to check 180 degree rotations. 90- and 270-degrees are verboten.
+		// this is fairly straightforward to derive, but here are the equations we'll be checking:
+		// x1 +x2 == 2*mx
+		// y1 +y2 == 2*my
+		double mx = midpoint[0];
+		double my = midpoint[1];
+
+		boolean cond1 = (ourHq.x + theirHq.x - 2 * mx) < Util.F_EPSILON;
+		boolean cond2 = (ourHq.y + theirHq.y - 2 * my) < Util.F_EPSILON;
+		if (!(cond1 && cond2)) {
+			return false;
+		}
+
+		for (MapLocation ourTower : ourTowers) {
+			boolean rotationFound = false;
+			for (MapLocation enemyTower : theirTowers) {
+				// written on separate lines for clarity
+				cond1 = (ourTower.x + enemyTower.x - 2 * mx) < Util.F_EPSILON;
+				cond2 = (ourTower.y + enemyTower.y - 2 * my) < Util.F_EPSILON;
+				if (cond1 && cond2) {
+					rotationFound = true;
+					break;
+				}
+			}
+			if (!rotationFound) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 }

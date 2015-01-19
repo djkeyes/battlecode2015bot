@@ -57,7 +57,6 @@ public class DroneHandler extends BaseRobotHandler {
 		public MoveTo(MapLocation target, boolean avoidEnemies) {
 			this.target = target;
 			this.avoidEnemies = avoidEnemies;
-
 		}
 
 		@Override

@@ -16,7 +16,7 @@ public class MinerFactoryHandler extends BaseBuildingHandler {
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
 		LinkedList<Action> result = new LinkedList<Action>();
-		if (BroadcastInterface.getRobotCount(rc, RobotType.MINER) < 10) { // TODO: what's thhe optimum number?
+		if (BroadcastInterface.getRobotCount(rc, RobotType.MINER) < 10) { // TODO: what's the optimum number?
 			result.add(spawnMiner);
 		}
 		return result;

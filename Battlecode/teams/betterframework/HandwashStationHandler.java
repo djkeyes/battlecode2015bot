@@ -14,7 +14,6 @@ public class HandwashStationHandler extends BaseRobotHandler {
 
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
-		// TODO
 		return new LinkedList<Action>();
 	}
 
