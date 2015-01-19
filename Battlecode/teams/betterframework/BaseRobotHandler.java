@@ -369,9 +369,9 @@ public abstract class BaseRobotHandler {
 
 		private double miningRate(double orePresent, boolean isBeaver) {
 			if (isBeaver) {
-				return Math.min(orePresent, Math.max(Math.min(2., orePresent / 20.), 0.2));
+				return Math.min(orePresent, Math.max(Math.min(GameConstants.BEAVER_MINE_MAX, orePresent / (double)GameConstants.BEAVER_MINE_RATE), GameConstants.MINIMUM_MINE_AMOUNT));
 			} else {
-				return Math.min(orePresent, Math.max(Math.min(3., orePresent / 4.), 0.2));
+				return Math.min(orePresent, Math.max(Math.min(GameConstants.MINER_MINE_MAX, orePresent / (double) GameConstants.MINER_MINE_RATE), GameConstants.MINIMUM_MINE_AMOUNT));
 			}
 		}
 	}
