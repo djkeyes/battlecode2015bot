@@ -199,17 +199,28 @@ public abstract class BaseRobotHandler {
 	}
 
 	protected void distributeSupply() throws GameActionException {
+		// if there are a lot of nearby allies, we might run out of bytecodes.
+		// invoking transferSupplies() costs us 500 bytecodes (it's really expensive!)
+		int maxBytecodesForTransfer = maxBytecodesToUse() - 500;
+		if (Clock.getBytecodeNum() > maxBytecodesForTransfer) {
+			return;
+		}
 		RobotInfo[] nearbyAllies = rc.senseNearbyRobots(rc.getLocation(), GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED,
 				rc.getTeam());
 		double lowestSupply = rc.getSupplyLevel();
 		double transferAmount = 0;
 		MapLocation suppliesToThisLocation = null;
 		for (RobotInfo ri : nearbyAllies) {
+			if (Clock.getBytecodeNum() > maxBytecodesForTransfer) {
+				break;
+			}
+
 			if (ri.supplyLevel < lowestSupply) {
 				lowestSupply = ri.supplyLevel;
 				transferAmount = (rc.getSupplyLevel() - ri.supplyLevel) / 2;
 				suppliesToThisLocation = ri.location;
 			}
+
 		}
 		if (suppliesToThisLocation != null) {
 			try {
@@ -217,7 +228,7 @@ public abstract class BaseRobotHandler {
 			} catch (Exception e) {
 				// this should be fixed. if it hasn't happened for several commits, just delete these lines.
 				// I think this happens when a unit misses the turn change (too many bytecodes)
-				System.out.println("exception while sending supplies to " + suppliesToThisLocation);
+				System.out.println("exception while sending supplies to " + suppliesToThisLocation + ". Did this robot run out of bytecodes?");
 				// e.printStackTrace();
 			}
 		}
