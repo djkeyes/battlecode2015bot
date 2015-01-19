@@ -3,12 +3,8 @@ package betterframework;
 import java.util.LinkedList;
 import java.util.List;
 
-import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.RobotController;
-import betterframework.BaseRobotHandler.Attack;
-import betterframework.BaseRobotHandler.Retreat;
-import betterframework.BaseRobotHandler.ScoutOutward;
 
 public class SoldierHandler extends BaseRobotHandler {
 

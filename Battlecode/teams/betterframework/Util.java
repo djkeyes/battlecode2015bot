@@ -11,6 +11,8 @@ public class Util {
 	// these are all the directions excluding OMNI and NONE
 	public static final Direction[] actualDirections = { Direction.NORTH, Direction.NORTH_EAST, Direction.EAST,
 			Direction.SOUTH_EAST, Direction.SOUTH, Direction.SOUTH_WEST, Direction.WEST, Direction.NORTH_WEST, };
+	public static final double F_EPSILON = 1e-6;
+	public static final double EPSILON = 1e-6;
 
 	// precondition: 0 <= i <= 12
 	public static int factorial(int i) {

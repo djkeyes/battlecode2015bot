@@ -264,7 +264,6 @@ public abstract class BaseRobotHandler {
 	// move this unit to an unexplored square
 	// this is implemented by simple moving further away from the HQ--however, this means it can get stuck in corners
 	public class ScoutOutward implements Action {
-
 		@Override
 		public boolean run() throws GameActionException {
 			if (rc.isCoreReady()) {

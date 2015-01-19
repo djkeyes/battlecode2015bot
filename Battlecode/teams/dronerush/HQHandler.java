@@ -161,7 +161,6 @@ public class HQHandler extends BaseBuildingHandler {
 
 						int distSq = rc.getLocation().distanceSquaredTo(enemyLoc);
 						if (distSq > actualRangeSq) { // this may happen if we need to use AOE
-							System.out.println("using AOE attack");
 							targetLoc = enemyLoc.add(enemyLoc.directionTo(rc.getLocation()));
 						} else {
 							targetLoc = enemyLoc;
