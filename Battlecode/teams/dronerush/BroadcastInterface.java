@@ -2,6 +2,7 @@ package dronerush;
 
 import java.util.LinkedList;
 
+import battlecode.common.Clock;
 import battlecode.common.GameActionException;
 import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
@@ -28,6 +29,8 @@ public class BroadcastInterface {
 	// 58630: pathfinding queue tail address
 	// 58631: pathfinding queue current size
 	// 58632-61631: pathfinding queue
+	// 61632: number of miners with abundant ore, for economy feedback system, odd turns
+	// 61633: number of miners with abundant ore, for economy feedback system, even turns
 
 	// is there a better/more efficient way to do this? we could use an enummap, but i think that's less efficient.
 	private static int getRobotIndex(RobotType type) {
@@ -232,5 +235,33 @@ public class BroadcastInterface {
 		out.append("head=" + head + ", tail=" + tail + ", size=" + size);
 		out.append("\n");
 		System.out.println(out.toString());
+	}
+
+	// 61632: number of miners with abundant ore, for economy feedback system
+	private static final int abundantOreChannel1 = 61632;
+	private static final int abundantOreChannel2 = 61633;
+
+	public static void resetAbundantOre(RobotController rc) throws GameActionException {
+		if ((Clock.getRoundNum() & 0x1) == 0) {
+			rc.broadcast(abundantOreChannel1, 0);
+		} else {
+			rc.broadcast(abundantOreChannel2, 0);
+		}
+	}
+
+	public static void incrementAbundantOre(RobotController rc) throws GameActionException {
+		if ((Clock.getRoundNum() & 0x1) == 0) {
+			rc.broadcast(abundantOreChannel1, rc.readBroadcast(abundantOreChannel1) + 1);
+		} else {
+			rc.broadcast(abundantOreChannel2, rc.readBroadcast(abundantOreChannel2) + 1);
+		}
+	}
+
+	public static int readPreviousRoundAbundantOre(RobotController rc) throws GameActionException {
+		if ((Clock.getRoundNum() & 0x1) != 0) {
+			return rc.readBroadcast(abundantOreChannel1);
+		} else {
+			return rc.readBroadcast(abundantOreChannel2);
+		}
 	}
 }

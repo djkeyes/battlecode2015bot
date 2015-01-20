@@ -25,6 +25,17 @@ public class HQHandler extends BaseBuildingHandler {
 		checkIfRotatedOrReflected();
 	}
 
+	private void atBeginningOfTurn() throws GameActionException {
+		// the HQ is guaranteed to run first
+		// so if you want to run code exactly once with a high priority, run it here
+
+		countUnits();
+
+		determineAttackSignal();
+
+		BroadcastInterface.resetAbundantOre(rc);
+	}
+
 	@Override
 	public int maxBytecodesToUse() {
 		return 9001;
@@ -40,15 +51,6 @@ public class HQHandler extends BaseBuildingHandler {
 			result.add(makeBeavers);
 		}
 		return result;
-	}
-
-	private void atBeginningOfTurn() throws GameActionException {
-		// the HQ is guaranteed to run first
-		// so if you want to run code exactly once with a high priority, run it here
-
-		countUnits();
-
-		determineAttackSignal();
 	}
 
 	private void checkIfRotatedOrReflected() throws GameActionException {

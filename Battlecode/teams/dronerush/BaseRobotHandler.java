@@ -370,7 +370,11 @@ public abstract class BaseRobotHandler {
 
 	// only beavers and miners can mine
 	// this also includes some exploratory behavior, which is triggered if there's better mineral patches nearby
+
+	// TODO: I just made these numbers up.
+	// can we do some testing to figure out optimial behavior?
 	public static final double MIN_ORE_PER_TURN_THRESHOLD = 0.2;
+	public static final double MIN_ADJ_ORE_PER_TURN_TO_REPORT_ABUNDANT_THRESHOLD = 0.5;
 
 	public class Mine implements Action {
 		private boolean isBeaver;
@@ -395,16 +399,26 @@ public abstract class BaseRobotHandler {
 				double maxOre = firstTurnOre + secondTurnOre;
 				Direction moveDir = null;
 
+				int numAbundant = 0;
+				if (maxOre > MIN_ADJ_ORE_PER_TURN_TO_REPORT_ABUNDANT_THRESHOLD) {
+					numAbundant++;
+				}
 				// use a random direction ordering, so we don't deplete all the ore in one place
 				for (Direction d : Util.getRandomDirectionOrdering(gen)) {
 					MapLocation adjLoc = rc.getLocation().add(d);
+					double adjOre = miningRate(rc.senseOre(adjLoc), isBeaver);
+					if (adjOre > MIN_ADJ_ORE_PER_TURN_TO_REPORT_ABUNDANT_THRESHOLD) {
+						numAbundant++;
+					}
 					if (rc.canMove(d)) {
-						double adjOre = miningRate(rc.senseOre(adjLoc), isBeaver);
 						if (adjOre > maxOre) {
 							moveDir = d;
 							maxOre = adjOre;
 						}
 					}
+				}
+				if (numAbundant >= 2) {
+					BroadcastInterface.incrementAbundantOre(rc);
 				}
 				if (maxOre > MIN_ORE_PER_TURN_THRESHOLD) {
 					if (moveDir == null) {
