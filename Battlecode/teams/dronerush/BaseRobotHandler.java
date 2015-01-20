@@ -150,6 +150,11 @@ public abstract class BaseRobotHandler {
 			MapLocation nextLoc = curLoc.add(d);
 			int dist = getDistanceFromOurHq(nextLoc);
 			TerrainTile tileType = rc.senseTerrainTile(nextLoc);
+			// even if the tile is "unknown", we can still infer the terrain based on map symmetry
+			if (tileType == TerrainTile.UNKNOWN) {
+				tileType = rc.senseTerrainTile(getSymmetricLocation(nextLoc));
+			}
+
 			if (tileType == TerrainTile.NORMAL) {
 				if (dist == 0 || dist > curDist + 1) {
 					BroadcastInterface.setDistance(rc, nextLoc.x, nextLoc.y, curDist + 1);
@@ -469,33 +474,29 @@ public abstract class BaseRobotHandler {
 	}
 
 	public int getDistanceFromEnemyHq(MapLocation target) throws GameActionException {
-		MapConfiguration configuration = getMapConfiguration();
-		float[] midpoint = getCachedMidpoint();
-
-		MapLocation transformed = null;
-		switch (configuration) {
-		case ROTATION:
-			transformed = Util.rotateAround(midpoint, target);
-			break;
-		case HORIZONTAL_REFLECTION:
-			transformed = Util.reflectHorizontallyAccross(midpoint, target);
-			break;
-		case VERTICAL_REFLECTION:
-			transformed = Util.reflectVerticallyAccross(midpoint, target);
-			break;
-		case DIAGONAL_REFLECTION:
-			transformed = Util.reflectDiagonallyAccross(midpoint, target);
-			break;
-		case INVERSE_DIAGONAL_REFLECTION:
-			transformed = Util.reflectInvDiagonallyAccross(midpoint, target);
-			break;
-		default:
-			// this should never happen
-			transformed = Util.rotateAround(midpoint, target);
-			break;
-		}
+		MapLocation transformed = getSymmetricLocation(target);
 
 		return BroadcastInterface.readDistance(rc, transformed.x, transformed.y);
+	}
+
+	private MapLocation getSymmetricLocation(MapLocation original) throws GameActionException {
+		MapConfiguration configuration = getMapConfiguration();
+		float[] midpoint = getCachedMidpoint();
+		switch (configuration) {
+		case ROTATION:
+			return Util.rotateAround(midpoint, original);
+		case HORIZONTAL_REFLECTION:
+			return Util.reflectHorizontallyAccross(midpoint, original);
+		case VERTICAL_REFLECTION:
+			return Util.reflectVerticallyAccross(midpoint, original);
+		case DIAGONAL_REFLECTION:
+			return Util.reflectDiagonallyAccross(midpoint, original);
+		case INVERSE_DIAGONAL_REFLECTION:
+			return Util.reflectInvDiagonallyAccross(midpoint, original);
+		default:
+			// this should never happen
+			return Util.rotateAround(midpoint, original);
+		}
 	}
 
 	// caches the map configuration, since it (probably) won't change.
