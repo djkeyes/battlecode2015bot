@@ -27,7 +27,7 @@ public class BroadcastInterface {
 	// 58629: pathfinding queue head address
 	// 58630: pathfinding queue tail address
 	// 58631: pathfinding queue current size
-	// 58632-59631: pathfinding queue
+	// 58632-61631: pathfinding queue
 
 	// is there a better/more efficient way to do this? we could use an enummap, but i think that's less efficient.
 	private static int getRobotIndex(RobotType type) {
@@ -158,7 +158,7 @@ public class BroadcastInterface {
 	private static final int pfqTailAddr = 58630;
 	private static final int pfqSizeAddr = 58631;
 	private static final int pfqBaseAddr = 58632;
-	private static final int PFQ_CAPACITY = 1000;
+	private static final int PFQ_CAPACITY = 3000;
 
 	// TODO: if we could buffer and dequeue things several at a time, it would probably save us some bytecodes
 	// by reducing the number of broadcasts needed for head updates
