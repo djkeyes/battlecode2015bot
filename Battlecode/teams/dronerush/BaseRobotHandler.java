@@ -339,11 +339,14 @@ public abstract class BaseRobotHandler {
 		@Override
 		public boolean run() throws GameActionException {
 			if (rc.isCoreReady()) {
+				MapLocation enemyHq = rc.senseEnemyHQLocation();
+				MapLocation[] enemyTowers = rc.senseEnemyTowerLocations();
+
 				int minDist = Integer.MAX_VALUE;
 				Direction nextDir = null;
 				for (Direction adjDir : Util.actualDirections) {
 					MapLocation adjLoc = rc.getLocation().add(adjDir);
-					if (rc.canMove(adjDir)) {
+					if (rc.canMove(adjDir) && !inHqOrTowerRange(adjLoc, enemyTowers, enemyHq)) {
 						int adjDist = getDistanceFromOurHq(adjLoc);
 						if (adjDist != 0 && adjDist < minDist) {
 							minDist = adjDist;

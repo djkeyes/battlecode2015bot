@@ -16,7 +16,9 @@ public class HelipadHandler extends BaseBuildingHandler {
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
 		LinkedList<Action> result = new LinkedList<Action>();
-		result.add(makeDrone);
+		if (BroadcastInterface.getRobotCount(rc, RobotType.DRONE) < 5) {
+			result.add(makeDrone);
+		}
 		return result;
 	}
 

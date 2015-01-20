@@ -8,6 +8,7 @@ import battlecode.common.GameActionException;
 import battlecode.common.GameConstants;
 import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
+import battlecode.common.RobotType;
 
 public class MissileHandler extends BaseRobotHandler {
 
@@ -31,11 +32,14 @@ public class MissileHandler extends BaseRobotHandler {
 					if (isFirstTurn) {
 						// on the first turn, we don't really have time to look at ALL the nearby enemies
 						// so just try to get away from allies
-						RobotInfo[] nearbyAllies = rc.senseNearbyRobots(1, rc.getTeam());
-						if (nearbyAllies.length > 0) {
-							Direction directionAway = nearbyAllies[0].location.directionTo(rc.getLocation());
-							if (rc.canMove(directionAway)) {
-								rc.move(directionAway);
+						RobotInfo[] nearbyAllies = rc.senseNearbyRobots(2, rc.getTeam());
+						for (int i = 0; i < nearbyAllies.length; i++) {
+							if (nearbyAllies[i].type == RobotType.LAUNCHER) {
+								Direction directionAway = nearbyAllies[i].location.directionTo(rc.getLocation());
+								if (rc.canMove(directionAway)) {
+									rc.move(directionAway);
+								}
+								break;
 							}
 						}
 						isFirstTurn = false;
@@ -43,26 +47,26 @@ public class MissileHandler extends BaseRobotHandler {
 						// it would be nice to always go towards the closest opponent
 						// but we really don't have the bytecodes to do that.
 						// so just go toward ANY opponent
-						int turnsLeft = spawnTurn + GameConstants.MISSILE_LIFESPAN - Clock.getRoundNum();
-						RobotInfo[] nearby = rc.senseNearbyRobots(turnsLeft * turnsLeft, rc.getTeam().opponent());
-						if (nearby.length > 0) {
-							if (nearby[0].location.isAdjacentTo(rc.getLocation())) {
+						int turnsLeft = spawnTurn + GameConstants.MISSILE_LIFESPAN - Clock.getRoundNum() + 1;
+						RobotInfo[] nearbyEnemies = rc.senseNearbyRobots(2 * turnsLeft * turnsLeft, rc.getTeam().opponent());
+						RobotInfo[] nearbyAllies;
+						if (nearbyEnemies.length > 0) {
+							nearbyAllies = rc.senseNearbyRobots(2, rc.getTeam());
+							if (nearbyEnemies[0].location.isAdjacentTo(rc.getLocation()) && nearbyAllies.length == 0) {
 								rc.explode();
 							}
 
-							Direction curDir = rc.getLocation().directionTo(nearby[0].location);
+							Direction curDir = rc.getLocation().directionTo(nearbyEnemies[0].location);
 							if (rc.canMove(curDir)) {
 								// if the path is blocked, no worries. we still have several more turns
-								// alternatively, if the enemy is already adjacent to us, still no worries. we have several more turns,
-								// and we don't want to explode the same turn we're launched.
 								rc.move(curDir);
 							}
 						} else {
 							// if we get here, it means our old target disappeared
 							// just try to avoid teammates
-							nearby = rc.senseNearbyRobots(1, rc.getTeam());
-							if (nearby.length > 0) {
-								Direction directionAway = nearby[0].location.directionTo(rc.getLocation());
+							nearbyAllies = rc.senseNearbyRobots(2, rc.getTeam());
+							if (nearbyAllies.length > 0) {
+								Direction directionAway = nearbyAllies[0].location.directionTo(rc.getLocation());
 								if (rc.canMove(directionAway)) {
 									rc.move(directionAway);
 								}

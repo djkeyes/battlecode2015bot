@@ -28,7 +28,7 @@ public class BeaverHandler extends BaseRobotHandler {
 			return result;
 		}
 		int numHelipads = BroadcastInterface.getRobotCount(rc, RobotType.HELIPAD);
-		if (numHelipads < 2) {
+		if (numHelipads < 1/*2*/) {
 			result.add(buildHelipad);
 			result.add(mine);
 			result.add(scout);

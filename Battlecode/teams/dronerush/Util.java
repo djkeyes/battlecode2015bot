@@ -68,10 +68,15 @@ public class Util {
 
 	public static Direction[] getDirectionsStrictlyToward(MapLocation cur, MapLocation dest) {
 		Direction toDest = cur.directionTo(dest);
+		return getDirectionsStrictlyToward(toDest);
+	}
+
+	public static Direction[] getDirectionsStrictlyToward(Direction toDest) {
 		Direction[] dirs = { toDest, toDest.rotateLeft(), toDest.rotateRight() };
 
 		return dirs;
 	}
+
 	public static int encodeMapConfigurationAsBitmask(boolean isVerticalReflection, boolean isHorizontalReflection,
 			boolean isDiagonalReflection, boolean isReverseDiagonalReflection, boolean isRotation) {
 		int bitmask = 0;
@@ -130,7 +135,6 @@ public class Util {
 		int dy = dx;
 		return original.add(dx, dy);
 	}
-	
 
 	public static float[] findMidpoint(MapLocation ourHq, MapLocation theirHq) {
 		float x = midpoint(ourHq.x, theirHq.x);
@@ -142,8 +146,8 @@ public class Util {
 		return (x1 + x2) / 2f;
 	}
 
-	public static boolean checkIsVerticalReflection(float[] midpoint, MapLocation ourHq, MapLocation theirHq, MapLocation[] ourTowers,
-			MapLocation[] theirTowers) {
+	public static boolean checkIsVerticalReflection(float[] midpoint, MapLocation ourHq, MapLocation theirHq,
+			MapLocation[] ourTowers, MapLocation[] theirTowers) {
 		// to be a vertical reflection, we should be able to flip every tower and hq around the y-midpoint and get an enemy tower
 		float y = midpoint[1];
 		// our hq already matches midpoint, we just need to check the x-coordinate
@@ -192,8 +196,8 @@ public class Util {
 		return true;
 	}
 
-	public static boolean checkIsDiagonalReflection(float[] midpoint, MapLocation ourHq, MapLocation theirHq, MapLocation[] ourTowers,
-			MapLocation[] theirTowers) {
+	public static boolean checkIsDiagonalReflection(float[] midpoint, MapLocation ourHq, MapLocation theirHq,
+			MapLocation[] ourTowers, MapLocation[] theirTowers) {
 		// this is a little trickier than horizontal and vertical reflections
 		// (x1, y1) and (x2, y2) are diagonally flipped around (mx, my) if
 		// x1 - mx == y2 - my
