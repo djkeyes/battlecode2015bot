@@ -99,7 +99,9 @@ public class HQHandler extends BaseBuildingHandler {
 	private final int[] counts = new int[RobotType.values().length];
 
 	private final RobotType[] releventTypes = { RobotType.BEAVER, RobotType.MINER, RobotType.SOLDIER, RobotType.DRONE,
-			RobotType.TANK, RobotType.MINERFACTORY, RobotType.BARRACKS, RobotType.HELIPAD, RobotType.TANKFACTORY, };
+			RobotType.TANK, RobotType.MINERFACTORY, RobotType.BARRACKS, RobotType.HELIPAD, RobotType.TANKFACTORY,
+			RobotType.AEROSPACELAB, RobotType.LAUNCHER, RobotType.TRAININGFIELD, RobotType.TECHNOLOGYINSTITUTE,
+			RobotType.COMMANDER };
 
 	public void countUnits() throws GameActionException {
 		// the actual max map radius is like 120*120 + 100*100 or something. idk. but this is bigger, so it's okay.

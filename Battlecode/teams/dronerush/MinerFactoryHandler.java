@@ -17,7 +17,7 @@ public class MinerFactoryHandler extends BaseBuildingHandler {
 	// I just made the numbers up.
 	// We should do some kind of map-based testing to figure out what are actually good values
 	private final int MINIMUM_MINER_COUNT = 10;
-	private final int MAXIMUM_MINER_COUNT = 35;
+	private final int MAXIMUM_MINER_COUNT = 30;
 	private final double BUILD_MINER_MINIMUM_FEEDBACK_RATIO = 0.3;
 
 	private boolean shouldBuildMoreMiners() throws GameActionException {

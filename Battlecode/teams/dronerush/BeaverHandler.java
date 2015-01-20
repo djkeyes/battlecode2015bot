@@ -28,7 +28,7 @@ public class BeaverHandler extends BaseRobotHandler {
 			return result;
 		}
 		int numHelipads = BroadcastInterface.getRobotCount(rc, RobotType.HELIPAD);
-		if (numHelipads < 1/*2*/) {
+		if (numHelipads < 1) {
 			result.add(buildHelipad);
 			result.add(mine);
 			result.add(scout);
@@ -41,12 +41,26 @@ public class BeaverHandler extends BaseRobotHandler {
 			result.add(scout);
 			return result;
 		}
-
-		if (gen.nextDouble() < 0.5) {
-			result.add(buildHelipad);
-		} else {
-			result.add(buildAerospaceLab);
+		int numTechnologyInstitutes = BroadcastInterface.getRobotCount(rc, RobotType.TECHNOLOGYINSTITUTE);
+		if (numTechnologyInstitutes < 1) {
+			result.add(buildTechInstitute);
+			result.add(mine);
+			result.add(scout);
+			return result;
 		}
+		int numTrainingFields = BroadcastInterface.getRobotCount(rc, RobotType.TRAININGFIELD);
+		if (numTrainingFields < 1) {
+			result.add(buildTrainingField);
+			result.add(mine);
+			result.add(scout);
+			return result;
+		}
+
+		// if (gen.nextDouble() < 0.2) {
+		// result.add(buildHelipad);
+		// } else {
+		result.add(buildAerospaceLab);
+		// }
 		result.add(mine);
 		result.add(scout);
 		return result;
