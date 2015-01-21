@@ -22,27 +22,13 @@ public class BeaverHandler extends BaseRobotHandler {
 		LinkedList<Action> result = new LinkedList<Action>();
 		result.add(attack);
 
-		// ugh, sometimes beavers wall themselves in.
-		RobotInfo[] adjacent = rc.senseNearbyRobots(2, rc.getTeam());
-		int numAdjacentBuildings = 0;
-		for(RobotInfo adj : adjacent){
-			if(adj.type.isBuilding){
-				numAdjacentBuildings++;
-			}
-		}
-		if(numAdjacentBuildings >= 4){
-			result.add(mine);
-			result.add(scout);
-			return result;
-		}
-
-		if(BroadcastInterface.shouldBuildMoreSupplyDepots(rc)){
+		if (BroadcastInterface.shouldBuildMoreSupplyDepots(rc)) {
 			result.add(buildSupplyDepot);
 			result.add(mine);
 			result.add(scout);
 			return result;
 		}
-		
+
 		int numMinerFactories = BroadcastInterface.getRobotCount(rc, RobotType.MINERFACTORY);
 		if (numMinerFactories < 1) {
 			result.add(buildMinerFactory);
@@ -133,7 +119,15 @@ public class BeaverHandler extends BaseRobotHandler {
 
 			Direction bestDir = null;
 			int maxDist = 0;
-			for (Direction d : Util.actualDirections) {
+			// protip: only buildings on checker squares, so that way your base is (almost) always pathable
+			// to do this, we check to see if both tiles of the square are even XOR odd
+			Direction[] potentialDirs;
+			if ((rc.getLocation().x & 0x1) == (rc.getLocation().y & 0x1)) {
+				potentialDirs = Util.cardinalDirections;
+			} else {
+				potentialDirs = Util.unCardinalDirections;
+			}
+			for (Direction d : potentialDirs) {
 				MapLocation adjLoc = rc.getLocation();
 				if (rc.canBuild(d, type)) {
 					int adjDist = BroadcastInterface.readDistance(rc, adjLoc.x, adjLoc.y);

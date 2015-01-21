@@ -9,8 +9,13 @@ import battlecode.common.MapLocation;
 public class Util {
 
 	// these are all the directions excluding OMNI and NONE
-	public static final Direction[] actualDirections = { Direction.NORTH, Direction.NORTH_EAST, Direction.EAST,
-			Direction.SOUTH_EAST, Direction.SOUTH, Direction.SOUTH_WEST, Direction.WEST, Direction.NORTH_WEST, };
+	public static final Direction[] actualDirections = { Direction.NORTH, Direction.NORTH_EAST, Direction.EAST, Direction.SOUTH_EAST,
+			Direction.SOUTH, Direction.SOUTH_WEST, Direction.WEST, Direction.NORTH_WEST, };
+
+	public static final Direction[] cardinalDirections = { Direction.NORTH, Direction.EAST,
+			Direction.SOUTH, Direction.WEST, };
+	public static final Direction[] unCardinalDirections = { Direction.NORTH_EAST, Direction.SOUTH_EAST,
+		Direction.SOUTH_WEST, Direction.NORTH_WEST, };
 
 	// for use when comparing floating point numbers
 	public static final double F_EPSILON = 1e-6;
@@ -146,8 +151,8 @@ public class Util {
 		return (x1 + x2) / 2f;
 	}
 
-	public static boolean checkIsVerticalReflection(float[] midpoint, MapLocation ourHq, MapLocation theirHq,
-			MapLocation[] ourTowers, MapLocation[] theirTowers) {
+	public static boolean checkIsVerticalReflection(float[] midpoint, MapLocation ourHq, MapLocation theirHq, MapLocation[] ourTowers,
+			MapLocation[] theirTowers) {
 		// to be a vertical reflection, we should be able to flip every tower and hq around the y-midpoint and get an enemy tower
 		float y = midpoint[1];
 		// our hq already matches midpoint, we just need to check the x-coordinate
@@ -196,8 +201,8 @@ public class Util {
 		return true;
 	}
 
-	public static boolean checkIsDiagonalReflection(float[] midpoint, MapLocation ourHq, MapLocation theirHq,
-			MapLocation[] ourTowers, MapLocation[] theirTowers) {
+	public static boolean checkIsDiagonalReflection(float[] midpoint, MapLocation ourHq, MapLocation theirHq, MapLocation[] ourTowers,
+			MapLocation[] theirTowers) {
 		// this is a little trickier than horizontal and vertical reflections
 		// (x1, y1) and (x2, y2) are diagonally flipped around (mx, my) if
 		// x1 - mx == y2 - my
