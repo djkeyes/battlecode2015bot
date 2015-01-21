@@ -29,7 +29,7 @@ public class HQHandler extends BaseBuildingHandler {
 		// the HQ is guaranteed to run first
 		// so if you want to run code exactly once with a high priority, run it here
 
-		countUnits();
+		countUnitsAndCheckSupply();
 
 		determineAttackSignal();
 
@@ -53,6 +53,20 @@ public class HQHandler extends BaseBuildingHandler {
 		return result;
 	}
 
+	@Override
+	public void distributeSupply() throws GameActionException {
+		// drones are our primary supply distribution mechanism, so if there are some nearby drones, give them lots of supply
+		RobotInfo[] nearby = rc.senseNearbyRobots(8, rc.getTeam());
+		for(RobotInfo robot : nearby){
+			if(robot.type == RobotType.DRONE){
+				rc.transferSupplies((int) rc.getSupplyLevel(), robot.location);
+				return;
+			}
+		}
+		
+		super.distributeSupply();
+	}
+
 	private void checkIfRotatedOrReflected() throws GameActionException {
 		// infers whether the map is a rotation or a reflection
 		// this is relevant for pathfinding and movement
@@ -72,8 +86,7 @@ public class HQHandler extends BaseBuildingHandler {
 		boolean isHorizontalReflection = Util.checkIsHorizontalReflection(midpoint, ourHq, theirHq, ourTowers, theirTowers);
 		// BOTH diagonals
 		boolean isDiagonalReflection = Util.checkIsDiagonalReflection(midpoint, ourHq, theirHq, ourTowers, theirTowers);
-		boolean isReverseDiagonalReflection = Util.checkIsReverseDiagonalReflection(midpoint, ourHq, theirHq, ourTowers,
-				theirTowers);
+		boolean isReverseDiagonalReflection = Util.checkIsReverseDiagonalReflection(midpoint, ourHq, theirHq, ourTowers, theirTowers);
 		boolean isRotation = Util.checkIsRotation(midpoint, ourHq, theirHq, ourTowers, theirTowers);
 		BroadcastInterface.setMapConfiguration(rc, midpoint, Util.encodeMapConfigurationAsBitmask(isVerticalReflection,
 				isHorizontalReflection, isDiagonalReflection, isReverseDiagonalReflection, isRotation));
@@ -98,12 +111,16 @@ public class HQHandler extends BaseBuildingHandler {
 	// it turns out EnumMaps really suck. they cost like 5x more bytecodes.
 	private final int[] counts = new int[RobotType.values().length];
 
-	private final RobotType[] releventTypes = { RobotType.BEAVER, RobotType.MINER, RobotType.SOLDIER, RobotType.DRONE,
-			RobotType.TANK, RobotType.MINERFACTORY, RobotType.BARRACKS, RobotType.HELIPAD, RobotType.TANKFACTORY,
-			RobotType.AEROSPACELAB, RobotType.LAUNCHER, RobotType.TRAININGFIELD, RobotType.TECHNOLOGYINSTITUTE,
-			RobotType.COMMANDER };
+	private final RobotType[] releventTypes = { RobotType.BEAVER, RobotType.MINER, RobotType.SOLDIER, RobotType.DRONE, RobotType.TANK,
+			RobotType.MINERFACTORY, RobotType.BARRACKS, RobotType.HELIPAD, RobotType.TANKFACTORY, RobotType.AEROSPACELAB,
+			RobotType.LAUNCHER, RobotType.TRAININGFIELD, RobotType.TECHNOLOGYINSTITUTE, RobotType.COMMANDER, RobotType.SUPPLYDEPOT };
 
-	public void countUnits() throws GameActionException {
+	// we need to factor in that robots will always use some extra bytecodes
+	// that being said, we won't supply *everyone*, just a fraction of our army
+	private final double excessSupplyFactor = 1.1;
+	private final double fractionToKeepSupplied = 0.6;
+
+	public void countUnitsAndCheckSupply() throws GameActionException {
 		// the actual max map radius is like 120*120 + 100*100 or something. idk. but this is bigger, so it's okay.
 		int MAX_MAP_RADIUS = 100000000;
 		RobotInfo[] ourRobots = rc.senseNearbyRobots(MAX_MAP_RADIUS, rc.getTeam());
@@ -114,9 +131,16 @@ public class HQHandler extends BaseBuildingHandler {
 		for (RobotInfo robot : ourRobots) {
 			counts[robot.type.ordinal()]++;
 		}
+		int supplyUpkeepNeeded = 0;
 		for (RobotType type : releventTypes) {
 			BroadcastInterface.setRobotCount(rc, type, counts[type.ordinal()]);
+			supplyUpkeepNeeded += counts[type.ordinal()] * type.supplyUpkeep;
 		}
+		double currentSupplyOutput = GameConstants.SUPPLY_GEN_BASE
+				* (GameConstants.SUPPLY_GEN_MULTIPLIER + Math.pow(counts[RobotType.SUPPLYDEPOT.ordinal()],
+						GameConstants.SUPPLY_GEN_EXPONENT));
+		BroadcastInterface.setBuildMoreSupplyDepots(rc, currentSupplyOutput < supplyUpkeepNeeded * excessSupplyFactor
+				* fractionToKeepSupplied);
 	}
 
 	private final Action attack = new HqAttack();

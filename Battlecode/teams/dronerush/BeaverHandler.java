@@ -7,6 +7,7 @@ import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
+import battlecode.common.RobotInfo;
 import battlecode.common.RobotType;
 
 public class BeaverHandler extends BaseRobotHandler {
@@ -20,6 +21,28 @@ public class BeaverHandler extends BaseRobotHandler {
 		// so in general, that should be their priority
 		LinkedList<Action> result = new LinkedList<Action>();
 		result.add(attack);
+
+		// ugh, sometimes beavers wall themselves in.
+		RobotInfo[] adjacent = rc.senseNearbyRobots(2, rc.getTeam());
+		int numAdjacentBuildings = 0;
+		for(RobotInfo adj : adjacent){
+			if(adj.type.isBuilding){
+				numAdjacentBuildings++;
+			}
+		}
+		if(numAdjacentBuildings >= 4){
+			result.add(mine);
+			result.add(scout);
+			return result;
+		}
+
+		if(BroadcastInterface.shouldBuildMoreSupplyDepots(rc)){
+			result.add(buildSupplyDepot);
+			result.add(mine);
+			result.add(scout);
+			return result;
+		}
+		
 		int numMinerFactories = BroadcastInterface.getRobotCount(rc, RobotType.MINERFACTORY);
 		if (numMinerFactories < 1) {
 			result.add(buildMinerFactory);

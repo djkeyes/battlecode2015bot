@@ -186,29 +186,53 @@ public abstract class BaseRobotHandler {
 	public void init() throws GameActionException {
 	}
 
+	private boolean isSupplyLow = false;
+
 	protected void distributeSupply() throws GameActionException {
+		// ask couriers for supply, if they're available
+		if (!rc.getType().isBuilding) {
+			double supply = rc.getSupplyLevel();
+			if (!isSupplyLow && supply <= 500) {
+				BroadcastInterface.enqueueSupplyQueue(rc, rc.getID());
+				isSupplyLow = true;
+			} else if (supply > 500) {
+				isSupplyLow = false;
+			}
+		}
+
 		// if there are a lot of nearby allies, we might run out of bytecodes.
 		// invoking transferSupplies() costs us 500 bytecodes (it's really expensive!)
 		int maxBytecodesForTransfer = maxBytecodesToUse() - 500;
 		if (Clock.getBytecodeNum() > maxBytecodesForTransfer) {
 			return;
 		}
-		RobotInfo[] nearbyAllies = rc.senseNearbyRobots(rc.getLocation(), GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED,
-				rc.getTeam());
+		RobotInfo[] nearbyAllies = rc.senseNearbyRobots(rc.getLocation(), GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED, rc.getTeam());
 		double lowestSupply = rc.getSupplyLevel();
 		double transferAmount = 0;
 		MapLocation suppliesToThisLocation = null;
+
+		MapLocation ourHq = rc.senseHQLocation();
+		int hqDist = rc.getLocation().distanceSquaredTo(ourHq);
 		for (RobotInfo ri : nearbyAllies) {
 			if (Clock.getBytecodeNum() > maxBytecodesForTransfer) {
 				break;
 			}
 
-			if (ri.type != RobotType.MISSILE) { // missiles don't need supply
-				if (ri.supplyLevel < lowestSupply) {
-					lowestSupply = ri.supplyLevel;
-					transferAmount = (rc.getSupplyLevel() - ri.supplyLevel) / 2;
-					suppliesToThisLocation = ri.location;
+			if (ri.type == RobotType.MISSILE) { // missiles don't need supply
+				continue;
+			}
+
+			if (ri.type.isBuilding) {
+				// buildings don't need supply, so only give it supply if it's closer to the warfront
+				int riDist = ri.location.distanceSquaredTo(ourHq);
+				if (riDist <= hqDist) {
+					continue;
 				}
+			}
+			if (ri.supplyLevel < lowestSupply) {
+				lowestSupply = ri.supplyLevel;
+				transferAmount = (rc.getSupplyLevel() - ri.supplyLevel) / 2;
+				suppliesToThisLocation = ri.location;
 			}
 		}
 		if (suppliesToThisLocation != null) {

@@ -31,6 +31,11 @@ public class BroadcastInterface {
 	// 58632-61631: pathfinding queue
 	// 61632: number of miners with abundant ore, for economy feedback system, odd turns
 	// 61633: number of miners with abundant ore, for economy feedback system, even turns
+	// 61634: supply queue head address
+	// 61635: supply queue tail address
+	// 61636: supply queue current size
+	// 61637-64637: supply queue
+	// 64638: build more supply depots signal
 
 	// is there a better/more efficient way to do this? we could use an enummap, but i think that's less efficient.
 	private static int getRobotIndex(RobotType type) {
@@ -136,8 +141,7 @@ public class BroadcastInterface {
 	private static final int xMidpointChannel = 58627;
 	private static final int yMidpointChannel = 58628;
 
-	public static void setMapConfiguration(RobotController rc, float[] midpoint, int configurationBitmask)
-			throws GameActionException {
+	public static void setMapConfiguration(RobotController rc, float[] midpoint, int configurationBitmask) throws GameActionException {
 		rc.broadcast(configurationBitmaskChannel, configurationBitmask);
 		// we're storing the midpoint (a float which might end in 0.5) as an int here
 		// so be sure to convert it back during lookup!
@@ -264,4 +268,51 @@ public class BroadcastInterface {
 			return rc.readBroadcast(abundantOreChannel2);
 		}
 	}
+
+	// 61634: supply queue head address
+	// 61635: supply queue tail address
+	// 61636: supply queue current size
+	// 61637-64637: supply queue
+	private static final int sqHeadAddr = 61634;
+	private static final int sqTailAddr = 61635;
+	private static final int sqSizeAddr = 61636;
+	private static final int sqBaseAddr = 61637;
+	private static final int SQ_CAPACITY = 3000;
+
+	public static int dequeueSupplyQueue(RobotController rc) throws GameActionException {
+		int size = rc.readBroadcast(sqSizeAddr);
+		if (size > 0) {
+			int head = rc.readBroadcast(sqHeadAddr);
+			rc.broadcast(sqHeadAddr, (head + 1) % SQ_CAPACITY);
+			rc.broadcast(sqSizeAddr, size - 1);
+			return rc.readBroadcast(sqBaseAddr + head);
+		}
+		return -1;
+	}
+
+	public static boolean enqueueSupplyQueue(RobotController rc, int robotID) throws GameActionException {
+		int size = rc.readBroadcast(sqSizeAddr);
+		if (size < SQ_CAPACITY) {
+			int tail = rc.readBroadcast(sqTailAddr);
+			rc.broadcast(sqTailAddr, (tail + 1) % SQ_CAPACITY);
+			rc.broadcast(sqSizeAddr, size + 1);
+
+			rc.broadcast(sqBaseAddr + tail, robotID);
+			return true;
+		}
+		// TODO: handle the case when the queue is full
+		System.out.println("The supply queue is full. Maybe you should increase the size, or investigate why it filled up.");
+		return false;
+	}
+
+	private static int moreSupplyDepotChannel = 64638;
+
+	public static boolean shouldBuildMoreSupplyDepots(RobotController rc) throws GameActionException {
+		return rc.readBroadcast(moreSupplyDepotChannel) == 1;
+	}
+
+	public static void setBuildMoreSupplyDepots(RobotController rc, boolean shouldBuildMore) throws GameActionException {
+		rc.broadcast(moreSupplyDepotChannel, shouldBuildMore ? 1 : 0);
+	}
+
 }
