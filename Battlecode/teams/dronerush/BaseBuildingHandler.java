@@ -1,6 +1,5 @@
 package dronerush;
 
-import battlecode.common.Clock;
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.MapLocation;
@@ -51,9 +50,7 @@ public abstract class BaseBuildingHandler extends BaseRobotHandler {
 			// check all the adjacent squares for one that's unblocked AND furthest from the opponent
 			Direction ans = null;
 			int maxDist = -1;
-//			System.out.println("starting spawn loop...");
 			for (Direction adjDir : safeSpawningDirs) {
-//				System.out.println("top of loop, bytecodes used = " + Clock.getBytecodeNum());
 				if (rc.canSpawn(adjDir, spawnType)) {
 					MapLocation adjLoc = rc.getLocation().add(adjDir);
 					// note: readDistance will return 0 if we haven't processed that location yet
@@ -74,9 +71,7 @@ public abstract class BaseBuildingHandler extends BaseRobotHandler {
 			// check all the adjacent squares for one that's unblocked AND furthest from the opponent
 			Direction ans = null;
 			int minDist = Integer.MAX_VALUE;
-//			System.out.println("starting spawn loop...");
 			for (Direction adjDir : safeSpawningDirs) {
-//				System.out.println("top of loop, bytecodes used = " + Clock.getBytecodeNum());
 				if (rc.canSpawn(adjDir, spawnType)) {
 					MapLocation adjLoc = rc.getLocation().add(adjDir);
 					// note: readDistance will return 0 if we haven't processed that location yet

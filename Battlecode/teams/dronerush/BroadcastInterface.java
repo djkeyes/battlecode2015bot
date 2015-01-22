@@ -181,6 +181,8 @@ public class BroadcastInterface {
 			int y = (short) (0xFFFF & combined);
 			return new int[] { x, y };
 		}
+		// TODO: when the queue is empty, that means we're done pathfinding. so we can just cache all the reads from here on out.
+		// alternatively, that means the queue is corrupted. =/
 		return null;
 	}
 
