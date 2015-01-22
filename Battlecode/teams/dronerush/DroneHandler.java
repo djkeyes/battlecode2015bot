@@ -22,27 +22,22 @@ public class DroneHandler extends BaseRobotHandler {
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
 		LinkedList<Action> result = new LinkedList<Action>();
-		// even on the largest maps (ie eightgates.xml), we can reach the enemy by turn 400.
-		// so if it's turn 500, we probably aren't doing much damage anymore (and we've already
-		// done all the scouting we need), so we should relegate drones to supply-delivery
-		if (Clock.getRoundNum() > 500) {
-			isSupplyCourier = true;
-			result.add(deliverSupplies); // TODO
+		// after enough time, we stop raiding with drones and relegate them to supply-delivery
+		// judging the right amount of time is a little tricky, so here's a heuristic:
+		// if it's before turn 500, keep attacking. if it's after turn 1000, definitely retreat.
+		// otherwise, don't retreat unless we're not making progress
+		if (!isSupplyCourier) {
+			int roundNum = Clock.getRoundNum();
+			isSupplyCourier = (roundNum > 1000 || (roundNum > 500 && !attackWithStats.shouldContinueAttacking()));
+		}
+
+		if (isSupplyCourier) {
+			result.add(deliverSupplies);
 			result.add(retreat);
 		} else {
-			if (BroadcastInterface.readAttackMode(rc)) {
-				// if there are enough drones, charge the opponent!
-				if (rc.isWeaponReady()) {
-					result.add(attack);
-					result.add(charge);
-				} else {
-					result.add(retreat);
-				}
-			} else {
-				// else skirt the towers and hq so that we can kill other units
-				result.add(attack);
-				result.add(advanceAvoidingEnemies);
-			}
+			// skirt the towers and hq so that we can kill other units
+			result.add(attackWithStats);
+			result.add(advanceAvoidingEnemies);
 		}
 		return result;
 	}
@@ -54,6 +49,7 @@ public class DroneHandler extends BaseRobotHandler {
 		}
 	}
 
+	private final AttackAndRecordStatistics attackWithStats = new AttackAndRecordStatistics();
 	private final Action attack = new Attack();
 
 	private final Action charge = new MoveTo(rc.senseEnemyHQLocation(), /* avoidEnemies */false);
@@ -62,6 +58,27 @@ public class DroneHandler extends BaseRobotHandler {
 	private final Action advanceAvoidingEnemies = new MoveTo(rc.senseEnemyHQLocation(), /* avoidEnemies */true);
 
 	private final Action deliverSupplies = new DeliverSupplies();
+
+	private class AttackAndRecordStatistics extends Attack {
+		public double totalDamageDealt = 0;
+		public int roundOfLastAttack = -1;
+
+		@Override
+		public boolean run() throws GameActionException {
+			boolean result = super.run();
+			if (result) {
+				roundOfLastAttack = Clock.getRoundNum();
+				totalDamageDealt += rc.getType().attackPower; // this disregards commander AOE buffs, but that's fine
+			}
+			return result;
+		}
+
+		public boolean shouldContinueAttacking() {
+			// this is pretty arbitary
+			int roundNum = Clock.getRoundNum();
+			return (roundNum - roundOfLastAttack < 50 || totalDamageDealt > 100);
+		}
+	}
 
 	// drones can fly over obstacles, so they don't need to rely on the BFS results
 	// therefore, we'll just use a simple movement implementation
