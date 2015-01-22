@@ -63,8 +63,6 @@ public class CommanderHandler extends BaseRobotHandler {
 			}
 
 			MapLocation ourHq = getOurHqLocation();
-			MapLocation enemyHq = getEnemyHqLocation();
-			MapLocation[] enemyTowers = getEnemyTowerLocations();
 			MapLocation[] potentialLocs = MapLocation.getAllMapLocationsWithinRadiusSq(rc.getLocation(),
 					GameConstants.FLASH_RANGE_SQUARED);
 			// should we use the pathfinding dist or the actual dist here?
@@ -75,7 +73,7 @@ public class CommanderHandler extends BaseRobotHandler {
 				int locDist = loc.distanceSquaredTo(ourHq);
 				if (locDist < minDist) {
 					if (rc.senseRobotAtLocation(loc) == null) {
-						if (!inHqOrTowerRange(loc, enemyTowers, enemyHq)) {
+						if (!inEnemyHqOrTowerRange(loc)) {
 							minDist = locDist;
 							best = loc;
 						}

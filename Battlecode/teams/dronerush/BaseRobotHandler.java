@@ -322,21 +322,8 @@ public abstract class BaseRobotHandler {
 			this.avoidEnemies = avoidEnemies;
 		}
 
-		// TODO: should we also avoid enemy units here? is that a good strategic decision?
-		// private RobotInfo[] enemyRobots = null;
-		private MapLocation[] enemyTowers = null;
-		private MapLocation enemyHq = null;
-
 		@Override
 		public boolean run() throws GameActionException {
-			if (avoidEnemies) {
-				// the robot with the longest range is the tower, with 24 range
-				// (sqrt(24)+1)^2 ~= 35
-				// enemyRobots = rc.senseNearbyRobots(35, rc.getTeam().opponent());
-				// TODO: the next 2 methods cost 100 and 50 bytecodes respectively. we should cache them in the broadcast array.
-				enemyTowers =getEnemyTowerLocations();
-				enemyHq = getEnemyHqLocation();
-			}
 
 			if (rc.isCoreReady()) {
 				int minDist = Integer.MAX_VALUE;
@@ -344,7 +331,8 @@ public abstract class BaseRobotHandler {
 				for (Direction adjDir : Util.actualDirections) {
 					MapLocation adjLoc = rc.getLocation().add(adjDir);
 					if (rc.canMove(adjDir)) {
-						if (!avoidEnemies || !inHqOrTowerRange(adjLoc, enemyTowers, enemyHq)) {
+						// TODO: should we also avoid enemy units here? is that a good strategic decision?
+						if (!avoidEnemies || !inEnemyHqOrTowerRange(adjLoc)) {
 							int adjDist = getDistanceFromEnemyHq(adjLoc);
 							// 0 indicates unexplored tiles
 							if (adjDist != 0 && adjDist < minDist) {
@@ -369,14 +357,11 @@ public abstract class BaseRobotHandler {
 		@Override
 		public boolean run() throws GameActionException {
 			if (rc.isCoreReady()) {
-				MapLocation enemyHq = getEnemyHqLocation();
-				MapLocation[] enemyTowers = getEnemyTowerLocations();
-
 				int minDist = Integer.MAX_VALUE;
 				Direction nextDir = null;
 				for (Direction adjDir : Util.actualDirections) {
 					MapLocation adjLoc = rc.getLocation().add(adjDir);
-					if (rc.canMove(adjDir) && !inHqOrTowerRange(adjLoc, enemyTowers, enemyHq)) {
+					if (rc.canMove(adjDir) && !inEnemyHqOrTowerRange(adjLoc)) {
 						int adjDist = getDistanceFromOurHq(adjLoc);
 						if (adjDist != 0 && adjDist < minDist) {
 							minDist = adjDist;
@@ -481,8 +466,9 @@ public abstract class BaseRobotHandler {
 		return false;
 	}
 
-	// enemyTowers and enemyHq are parameters in case you already have a cached copy of them
-	public boolean inHqOrTowerRange(MapLocation loc, MapLocation[] enemyTowers, MapLocation enemyHq) {
+	public boolean inEnemyHqOrTowerRange(MapLocation loc) {
+		MapLocation enemyHq = getEnemyHqLocation();
+		MapLocation[] enemyTowers = getEnemyTowerLocations();
 		for (MapLocation enemyTower : enemyTowers) {
 			if (loc.distanceSquaredTo(enemyTower) <= RobotType.TOWER.attackRadiusSquared) {
 				return true;
@@ -501,12 +487,6 @@ public abstract class BaseRobotHandler {
 		}
 		return false;
 	}
-
-	// utility methods
-	// TODO: add a building placement-finding method that avoids blocking paths
-	// TODO: add a building placement-finding method that intentionally blocks opponents to fuck up their pathfinding (supply depots
-	// are the best option for this)
-	// TODO: add some space to the broadcast system that records planned movement, so that robots don't crash into each other.
 
 	public int getDistanceFromOurHq(MapLocation target) throws GameActionException {
 		return BroadcastInterface.readDistance(rc, target.x, target.y, getOurHqLocation());
@@ -578,6 +558,7 @@ public abstract class BaseRobotHandler {
 		if (cacheTimeOurTowerLocations == roundNum) {
 			return cachedOurTowerLocations;
 		}
+		cacheTimeOurTowerLocations = roundNum;
 		return cachedOurTowerLocations = rc.senseTowerLocations();
 	}
 
@@ -589,18 +570,19 @@ public abstract class BaseRobotHandler {
 		if (cacheTimeOurHqLocation == roundNum) {
 			return cachedOurHqLocation;
 		}
+		cacheTimeOurHqLocation = roundNum;
 		return cachedOurHqLocation = rc.senseHQLocation();
 	}
 
 	private MapLocation cachedOurHqLocation = null;
 	private int cacheTimeOurHqLocation = -1;
-	
 
 	public MapLocation[] getEnemyTowerLocations() {
 		int roundNum = Clock.getRoundNum();
 		if (cacheTimeEnemyTowerLocations == roundNum) {
 			return cachedEnemyTowerLocations;
 		}
+		cacheTimeEnemyTowerLocations = roundNum;
 		return cachedEnemyTowerLocations = rc.senseEnemyTowerLocations();
 	}
 
@@ -612,6 +594,7 @@ public abstract class BaseRobotHandler {
 		if (cacheTimeEnemyHqLocation == roundNum) {
 			return cachedEnemyHqLocation;
 		}
+		cacheTimeEnemyHqLocation = roundNum;
 		return cachedEnemyHqLocation = rc.senseEnemyHQLocation();
 	}
 

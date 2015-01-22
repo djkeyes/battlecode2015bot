@@ -1,5 +1,6 @@
 package dronerush;
 
+import battlecode.common.Clock;
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.MapLocation;
@@ -17,10 +18,13 @@ public abstract class BaseBuildingHandler extends BaseRobotHandler {
 	class SpawnUnit implements Action {
 		private RobotType type;
 		private boolean spawnTowardEnemy;
+		private Direction[] safeSpawningDirs;
 
 		SpawnUnit(RobotType type, boolean spawnTowardEnemy) {
 			this.type = type;
 			this.spawnTowardEnemy = spawnTowardEnemy;
+
+			safeSpawningDirs = findSafeSpawningDirs();
 		}
 
 		@Override
@@ -47,7 +51,9 @@ public abstract class BaseBuildingHandler extends BaseRobotHandler {
 			// check all the adjacent squares for one that's unblocked AND furthest from the opponent
 			Direction ans = null;
 			int maxDist = -1;
-			for (Direction adjDir : Util.actualDirections) {
+//			System.out.println("starting spawn loop...");
+			for (Direction adjDir : safeSpawningDirs) {
+//				System.out.println("top of loop, bytecodes used = " + Clock.getBytecodeNum());
 				if (rc.canSpawn(adjDir, spawnType)) {
 					MapLocation adjLoc = rc.getLocation().add(adjDir);
 					// note: readDistance will return 0 if we haven't processed that location yet
@@ -64,12 +70,13 @@ public abstract class BaseBuildingHandler extends BaseRobotHandler {
 
 		private Direction findSpawnTowardEnemy(RobotType spawnType) throws GameActionException {
 			// find a spawn location that's closest to the enemy
-			// TODO: regardless of which spawn method is called, though, we probably shouldn't spawn thing in the line of fire. meh.
 
 			// check all the adjacent squares for one that's unblocked AND furthest from the opponent
 			Direction ans = null;
 			int minDist = Integer.MAX_VALUE;
-			for (Direction adjDir : Util.actualDirections) {
+//			System.out.println("starting spawn loop...");
+			for (Direction adjDir : safeSpawningDirs) {
+//				System.out.println("top of loop, bytecodes used = " + Clock.getBytecodeNum());
 				if (rc.canSpawn(adjDir, spawnType)) {
 					MapLocation adjLoc = rc.getLocation().add(adjDir);
 					// note: readDistance will return 0 if we haven't processed that location yet
@@ -84,6 +91,29 @@ public abstract class BaseBuildingHandler extends BaseRobotHandler {
 			}
 			return ans;
 		}
+
+		private Direction[] findSafeSpawningDirs() {
+			// precompute directions that are out of enemy tower range
+			// even if we kill a tower, it's fine if we don't update this. we'll just spawn in a different direction
+			Direction[] tmp = new Direction[Util.actualDirections.length];
+			int size = 0;
+			for (Direction d : Util.actualDirections) {
+				if (!inEnemyHqOrTowerRange(rc.getLocation().add(d))) {
+					tmp[size++] = d;
+				}
+			}
+
+			Direction[] result = new Direction[size];
+			System.arraycopy(tmp, 0, result, 0, size);
+
+			return result;
+		}
+
+	}
+
+	@Override
+	public void onExcessBytecodes() {
+
 	}
 
 }

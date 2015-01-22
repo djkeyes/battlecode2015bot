@@ -50,9 +50,7 @@ public class DroneHandler extends BaseRobotHandler {
 	}
 
 	private final AttackAndRecordStatistics attackWithStats = new AttackAndRecordStatistics();
-	private final Action attack = new Attack();
 
-	private final Action charge = new MoveTo(getEnemyHqLocation(), /* avoidEnemies */false);
 	private final Action retreat = new MoveTo(getOurHqLocation(), /* avoidEnemies */true);
 
 	private final Action advanceAvoidingEnemies = new MoveTo(getEnemyHqLocation(), /* avoidEnemies */true);
@@ -87,8 +85,6 @@ public class DroneHandler extends BaseRobotHandler {
 		private boolean avoidEnemies;
 
 		private RobotInfo[] enemyRobots = null;
-		private MapLocation[] enemyTowers = null;
-		private MapLocation enemyHq = null;
 
 		public MoveTo(MapLocation target, boolean avoidEnemies) {
 			this.target = target;
@@ -102,8 +98,6 @@ public class DroneHandler extends BaseRobotHandler {
 				// (sqrt(24)+1)^2 ~= 35
 				enemyRobots = rc.senseNearbyRobots(35, rc.getTeam().opponent());
 				// TODO: the next 2 methods cost 100 and 50 bytecodes respectively. we should cache them in the broadcast array.
-				enemyTowers = getEnemyTowerLocations();
-				enemyHq = getEnemyHqLocation();
 			}
 			if (rc.isCoreReady()) {
 				for (Direction d : Util.getDirectionsToward(rc.getLocation(), target)) {
@@ -125,7 +119,7 @@ public class DroneHandler extends BaseRobotHandler {
 			if (inRobotRange(nextLoc, enemyRobots)) {
 				return true;
 			}
-			if (inHqOrTowerRange(nextLoc, enemyTowers, enemyHq)) {
+			if (inEnemyHqOrTowerRange(nextLoc)) {
 				return true;
 			}
 			return false;
@@ -135,8 +129,6 @@ public class DroneHandler extends BaseRobotHandler {
 	private class DeliverSupplies implements Action {
 
 		private RobotInfo[] enemyRobots = null;
-		private MapLocation[] enemyTowers = null;
-		private MapLocation enemyHq = null;
 
 		private int curTargetID = -1;
 
@@ -167,8 +159,6 @@ public class DroneHandler extends BaseRobotHandler {
 						// TODO: we call these several times in this file. maybe we should make them a static memberof DroneHandler,
 						// and lazily initialize them each turn
 						enemyRobots = rc.senseNearbyRobots(35, rc.getTeam().opponent());
-						enemyTowers = getEnemyTowerLocations();
-						enemyHq = getEnemyHqLocation();
 						for (Direction d : Util.getDirectionsToward(rc.getLocation(), targetRobot.location)) {
 							// TODO: we should also avoid enemies
 							if (rc.canMove(d) && !isNearEnemy(rc.getLocation().add(d))) {
@@ -195,7 +185,7 @@ public class DroneHandler extends BaseRobotHandler {
 			if (inRobotRange(nextLoc, enemyRobots)) {
 				return true;
 			}
-			if (inHqOrTowerRange(nextLoc, enemyTowers, enemyHq)) {
+			if (inEnemyHqOrTowerRange(nextLoc)) {
 				return true;
 			}
 			return false;
