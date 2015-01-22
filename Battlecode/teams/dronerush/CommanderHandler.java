@@ -82,8 +82,11 @@ public class CommanderHandler extends BaseRobotHandler {
 					}
 				}
 			}
-			rc.castFlash(best);
-			return true;
+			if (best != null) {
+				rc.castFlash(best);
+				return true;
+			}
+			return false;
 		}
 	}
 
