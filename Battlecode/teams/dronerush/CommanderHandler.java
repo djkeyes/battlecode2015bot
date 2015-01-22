@@ -1,5 +1,7 @@
 package dronerush;
 
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -57,6 +59,30 @@ public class CommanderHandler extends BaseRobotHandler {
 
 	public class RetreatWithFlash implements Action {
 
+		private int[][] orderedFlashOffsets;
+
+		public RetreatWithFlash() {
+			orderedFlashOffsets = generateOrderedFlashOffsets();
+		}
+
+		private int[][] generateOrderedFlashOffsets() {
+			MapLocation[] outsourcedPositions = MapLocation.getAllMapLocationsWithinRadiusSq(new MapLocation(0, 0),
+					GameConstants.FLASH_RANGE_SQUARED);
+			int[][] result = new int[outsourcedPositions.length][3];
+			for (int i = 0; i < outsourcedPositions.length; i++) {
+				result[i][0] = outsourcedPositions[i].x;
+				result[i][1] = outsourcedPositions[i].y;
+				result[i][2] = result[i][0] * result[i][0] + result[i][1] * result[i][1];
+			}
+			Arrays.sort(result, new Comparator<int[]>() {
+				@Override
+				public int compare(int[] a, int[] b) {
+					return b[2] - a[2];
+				}
+			});
+			return result;
+		}
+
 		@Override
 		public boolean run() throws GameActionException {
 			if (!rc.isCoreReady() || rc.getFlashCooldown() > 0) {
@@ -64,15 +90,13 @@ public class CommanderHandler extends BaseRobotHandler {
 			}
 
 			MapLocation ourHq = getOurHqLocation();
-			MapLocation[] potentialLocs = MapLocation.getAllMapLocationsWithinRadiusSq(rc.getLocation(),
-					GameConstants.FLASH_RANGE_SQUARED);
 			// should we use the pathfinding dist or the actual dist here?
 			// it sort of makes sense to use the actual dist, since we can flash over obstacles and we'd need to use this in a pinch
 			int minDist = rc.getLocation().distanceSquaredTo(ourHq);
 			MapLocation best = null;
-			int start = Clock.getBytecodeNum();
-			// System.out.println("bytecodes at start of loop: " + start);
-			for (MapLocation loc : potentialLocs) {
+			// System.out.println("bytecodes at start of loop: " + Clock.getBytecodeNum());
+			for (int[] offset : orderedFlashOffsets) {
+				MapLocation loc = rc.getLocation().add(offset[0], offset[1]);
 				// System.out.println("bytecodes at current iteration: " + Clock.getBytecodeNum());
 				int locDist = loc.distanceSquaredTo(ourHq);
 				if (locDist < minDist) {
