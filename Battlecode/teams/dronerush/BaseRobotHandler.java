@@ -157,7 +157,7 @@ public abstract class BaseRobotHandler {
 
 			if (tileType == TerrainTile.NORMAL) {
 				if (dist == 0 || dist > curDist + 1) {
-					BroadcastInterface.setDistance(rc, nextLoc.x, nextLoc.y, curDist + 1);
+					BroadcastInterface.setDistance(rc, nextLoc.x, nextLoc.y, curDist + 1, getOurHqLocation());
 					BroadcastInterface.enqueuePathfindingQueue(rc, nextLoc.x, nextLoc.y);
 				}
 			} else if (tileType == TerrainTile.UNKNOWN) {
@@ -206,12 +206,13 @@ public abstract class BaseRobotHandler {
 		if (Clock.getBytecodeNum() > maxBytecodesForTransfer) {
 			return;
 		}
-		RobotInfo[] nearbyAllies = rc.senseNearbyRobots(rc.getLocation(), GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED, rc.getTeam());
+		RobotInfo[] nearbyAllies = rc.senseNearbyRobots(rc.getLocation(), GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED,
+				rc.getTeam());
 		double lowestSupply = rc.getSupplyLevel();
 		double transferAmount = 0;
 		MapLocation suppliesToThisLocation = null;
 
-		MapLocation ourHq = rc.senseHQLocation();
+		MapLocation ourHq = getOurHqLocation();
 		int hqDist = rc.getLocation().distanceSquaredTo(ourHq);
 		for (RobotInfo ri : nearbyAllies) {
 			if (Clock.getBytecodeNum() > maxBytecodesForTransfer) {
@@ -321,21 +322,8 @@ public abstract class BaseRobotHandler {
 			this.avoidEnemies = avoidEnemies;
 		}
 
-		// TODO: should we also avoid enemy units here? is that a good strategic decision?
-		// private RobotInfo[] enemyRobots = null;
-		private MapLocation[] enemyTowers = null;
-		private MapLocation enemyHq = null;
-
 		@Override
 		public boolean run() throws GameActionException {
-			if (avoidEnemies) {
-				// the robot with the longest range is the tower, with 24 range
-				// (sqrt(24)+1)^2 ~= 35
-				// enemyRobots = rc.senseNearbyRobots(35, rc.getTeam().opponent());
-				// TODO: the next 2 methods cost 100 and 50 bytecodes respectively. we should cache them in the broadcast array.
-				enemyTowers = rc.senseEnemyTowerLocations();
-				enemyHq = rc.senseEnemyHQLocation();
-			}
 
 			if (rc.isCoreReady()) {
 				int minDist = Integer.MAX_VALUE;
@@ -343,7 +331,8 @@ public abstract class BaseRobotHandler {
 				for (Direction adjDir : Util.actualDirections) {
 					MapLocation adjLoc = rc.getLocation().add(adjDir);
 					if (rc.canMove(adjDir)) {
-						if (!avoidEnemies || !inHqOrTowerRange(adjLoc, enemyTowers, enemyHq)) {
+						// TODO: should we also avoid enemy units here? is that a good strategic decision?
+						if (!avoidEnemies || !inEnemyHqOrTowerRange(adjLoc)) {
 							int adjDist = getDistanceFromEnemyHq(adjLoc);
 							// 0 indicates unexplored tiles
 							if (adjDist != 0 && adjDist < minDist) {
@@ -368,14 +357,11 @@ public abstract class BaseRobotHandler {
 		@Override
 		public boolean run() throws GameActionException {
 			if (rc.isCoreReady()) {
-				MapLocation enemyHq = rc.senseEnemyHQLocation();
-				MapLocation[] enemyTowers = rc.senseEnemyTowerLocations();
-
 				int minDist = Integer.MAX_VALUE;
 				Direction nextDir = null;
 				for (Direction adjDir : Util.actualDirections) {
 					MapLocation adjLoc = rc.getLocation().add(adjDir);
-					if (rc.canMove(adjDir) && !inHqOrTowerRange(adjLoc, enemyTowers, enemyHq)) {
+					if (rc.canMove(adjDir) && !inEnemyHqOrTowerRange(adjLoc)) {
 						int adjDist = getDistanceFromOurHq(adjLoc);
 						if (adjDist != 0 && adjDist < minDist) {
 							minDist = adjDist;
@@ -480,8 +466,9 @@ public abstract class BaseRobotHandler {
 		return false;
 	}
 
-	// enemyTowers and enemyHq are parameters in case you already have a cached copy of them
-	public boolean inHqOrTowerRange(MapLocation loc, MapLocation[] enemyTowers, MapLocation enemyHq) {
+	public boolean inEnemyHqOrTowerRange(MapLocation loc) {
+		MapLocation enemyHq = getEnemyHqLocation();
+		MapLocation[] enemyTowers = getEnemyTowerLocations();
 		for (MapLocation enemyTower : enemyTowers) {
 			if (loc.distanceSquaredTo(enemyTower) <= RobotType.TOWER.attackRadiusSquared) {
 				return true;
@@ -501,20 +488,14 @@ public abstract class BaseRobotHandler {
 		return false;
 	}
 
-	// utility methods
-	// TODO: add a building placement-finding method that avoids blocking paths
-	// TODO: add a building placement-finding method that intentionally blocks opponents to fuck up their pathfinding (supply depots
-	// are the best option for this)
-	// TODO: add some space to the broadcast system that records planned movement, so that robots don't crash into each other.
-
 	public int getDistanceFromOurHq(MapLocation target) throws GameActionException {
-		return BroadcastInterface.readDistance(rc, target.x, target.y);
+		return BroadcastInterface.readDistance(rc, target.x, target.y, getOurHqLocation());
 	}
 
 	public int getDistanceFromEnemyHq(MapLocation target) throws GameActionException {
 		MapLocation transformed = getSymmetricLocation(target);
 
-		return BroadcastInterface.readDistance(rc, transformed.x, transformed.y);
+		return BroadcastInterface.readDistance(rc, transformed.x, transformed.y, getOurHqLocation());
 	}
 
 	private MapLocation getSymmetricLocation(MapLocation original) throws GameActionException {
@@ -569,4 +550,54 @@ public abstract class BaseRobotHandler {
 
 	private MapConfiguration cachedConfiguration = null;
 	private float[] cachedMidpoint = null;
+
+	// some cachable things
+	// if we had more bytecodes, it might be cool to implement this as some kind of generic class
+	public MapLocation[] getOurTowerLocations() {
+		int roundNum = Clock.getRoundNum(); // TODO: does this cost (a nontrivial amount of) bytecodes? or is it just an accessor?
+		if (cacheTimeOurTowerLocations == roundNum) {
+			return cachedOurTowerLocations;
+		}
+		cacheTimeOurTowerLocations = roundNum;
+		return cachedOurTowerLocations = rc.senseTowerLocations();
+	}
+
+	private MapLocation[] cachedOurTowerLocations = null;
+	private int cacheTimeOurTowerLocations = -1;
+
+	public MapLocation getOurHqLocation() {
+		int roundNum = Clock.getRoundNum();
+		if (cacheTimeOurHqLocation == roundNum) {
+			return cachedOurHqLocation;
+		}
+		cacheTimeOurHqLocation = roundNum;
+		return cachedOurHqLocation = rc.senseHQLocation();
+	}
+
+	private MapLocation cachedOurHqLocation = null;
+	private int cacheTimeOurHqLocation = -1;
+
+	public MapLocation[] getEnemyTowerLocations() {
+		int roundNum = Clock.getRoundNum();
+		if (cacheTimeEnemyTowerLocations == roundNum) {
+			return cachedEnemyTowerLocations;
+		}
+		cacheTimeEnemyTowerLocations = roundNum;
+		return cachedEnemyTowerLocations = rc.senseEnemyTowerLocations();
+	}
+
+	private MapLocation[] cachedEnemyTowerLocations = null;
+	private int cacheTimeEnemyTowerLocations = -1;
+
+	public MapLocation getEnemyHqLocation() {
+		int roundNum = Clock.getRoundNum();
+		if (cacheTimeEnemyHqLocation == roundNum) {
+			return cachedEnemyHqLocation;
+		}
+		cacheTimeEnemyHqLocation = roundNum;
+		return cachedEnemyHqLocation = rc.senseEnemyHQLocation();
+	}
+
+	private MapLocation cachedEnemyHqLocation = null;
+	private int cacheTimeEnemyHqLocation = -1;
 }

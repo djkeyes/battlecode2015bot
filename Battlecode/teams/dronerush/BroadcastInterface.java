@@ -104,14 +104,12 @@ public class BroadcastInterface {
 	// to solve this, i'm converting all coordinates to be relative to the HQ. this means they can range from [-120, 120] in x and
 	// [-30,30] in y. so be careful!
 
-	public static void setDistance(RobotController rc, int x, int y, int d) throws GameActionException {
-		MapLocation hqLoc = rc.senseHQLocation();
+	public static void setDistance(RobotController rc, int x, int y, int d, MapLocation hqLoc) throws GameActionException {
 		int channel = 20 + mapIndex(x - hqLoc.x, y - hqLoc.y);
 		rc.broadcast(channel, d);
 	}
 
-	public static int readDistance(RobotController rc, int x, int y) throws GameActionException {
-		MapLocation hqLoc = rc.senseHQLocation();
+	public static int readDistance(RobotController rc, int x, int y, MapLocation hqLoc) throws GameActionException {
 		int channel = 20 + mapIndex(x - hqLoc.x, y - hqLoc.y);
 		// System.out.println("reading from channel " + channel + "(x=" + x + ", y=" + y + ")");
 		return rc.readBroadcast(channel);
@@ -183,6 +181,8 @@ public class BroadcastInterface {
 			int y = (short) (0xFFFF & combined);
 			return new int[] { x, y };
 		}
+		// TODO: when the queue is empty, that means we're done pathfinding. so we can just cache all the reads from here on out.
+		// alternatively, that means the queue is corrupted. =/
 		return null;
 	}
 
