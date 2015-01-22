@@ -62,9 +62,9 @@ public class CommanderHandler extends BaseRobotHandler {
 				return false;
 			}
 
-			MapLocation ourHq = rc.senseHQLocation();
-			MapLocation enemyHq = rc.senseEnemyHQLocation();
-			MapLocation[] enemyTowers = rc.senseEnemyTowerLocations();
+			MapLocation ourHq = getOurHqLocation();
+			MapLocation enemyHq = getEnemyHqLocation();
+			MapLocation[] enemyTowers = getEnemyTowerLocations();
 			MapLocation[] potentialLocs = MapLocation.getAllMapLocationsWithinRadiusSq(rc.getLocation(),
 					GameConstants.FLASH_RANGE_SQUARED);
 			// should we use the pathfinding dist or the actual dist here?

@@ -52,7 +52,7 @@ public abstract class BaseBuildingHandler extends BaseRobotHandler {
 					MapLocation adjLoc = rc.getLocation().add(adjDir);
 					// note: readDistance will return 0 if we haven't processed that location yet
 					// but that's okay
-					int distance = BroadcastInterface.readDistance(rc, adjLoc.x, adjLoc.y);
+					int distance = BroadcastInterface.readDistance(rc, adjLoc.x, adjLoc.y, getOurHqLocation());
 					if (distance > maxDist) {
 						maxDist = distance;
 						ans = adjDir;
@@ -73,7 +73,7 @@ public abstract class BaseBuildingHandler extends BaseRobotHandler {
 				if (rc.canSpawn(adjDir, spawnType)) {
 					MapLocation adjLoc = rc.getLocation().add(adjDir);
 					// note: readDistance will return 0 if we haven't processed that location yet
-					int distance = BroadcastInterface.readDistance(rc, adjLoc.x, adjLoc.y);
+					int distance = BroadcastInterface.readDistance(rc, adjLoc.x, adjLoc.y, getOurHqLocation());
 					if (distance == 0 && ans == null) {
 						ans = adjDir;
 					} else if (distance != 0 && distance < minDist) {

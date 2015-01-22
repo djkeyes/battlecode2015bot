@@ -19,7 +19,7 @@ public class HQHandler extends BaseBuildingHandler {
 	@Override
 	public void init() throws GameActionException {
 		// seed the distances for pathfinding
-		BroadcastInterface.setDistance(rc, rc.getLocation().x, rc.getLocation().y, 1);
+		BroadcastInterface.setDistance(rc, rc.getLocation().x, rc.getLocation().y, 1, rc.getLocation());
 		BroadcastInterface.enqueuePathfindingQueue(rc, rc.getLocation().x, rc.getLocation().y);
 
 		checkIfRotatedOrReflected();
@@ -75,10 +75,10 @@ public class HQHandler extends BaseBuildingHandler {
 		// however, it IS possible to be wrong. some maps may have identical tower placements whether they are rotated or reflected,
 		// and we would need to check the terrain and ore distributions to get a better idea
 
-		MapLocation ourHq = rc.senseHQLocation();
-		MapLocation theirHq = rc.senseEnemyHQLocation();
-		MapLocation[] ourTowers = rc.senseTowerLocations();
-		MapLocation[] theirTowers = rc.senseEnemyTowerLocations();
+		MapLocation ourHq = rc.getLocation();
+		MapLocation theirHq = getEnemyHqLocation();
+		MapLocation[] ourTowers = getOurTowerLocations();
+		MapLocation[] theirTowers = getEnemyTowerLocations();
 
 		// this is represented as a float because we eventually store it in 32-bits in the broadcast array
 		float[] midpoint = Util.findMidpoint(ourHq, theirHq);
@@ -154,7 +154,7 @@ public class HQHandler extends BaseBuildingHandler {
 			// for example, the HQ can't hit an object at sq range 49 on the horizontal, but it CAN hit an object at sq range 50 on the
 			// diagonal
 			// so we have a little more logic to handle that
-			int numTowers = rc.senseTowerLocations().length;
+			int numTowers = getOurTowerLocations().length;
 			boolean hasRangeBuff = numTowers >= 2;
 			boolean hasAoeBuff = numTowers >= 5;
 			int actualRangeSq;

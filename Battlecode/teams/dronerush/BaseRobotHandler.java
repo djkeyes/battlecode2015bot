@@ -157,7 +157,7 @@ public abstract class BaseRobotHandler {
 
 			if (tileType == TerrainTile.NORMAL) {
 				if (dist == 0 || dist > curDist + 1) {
-					BroadcastInterface.setDistance(rc, nextLoc.x, nextLoc.y, curDist + 1);
+					BroadcastInterface.setDistance(rc, nextLoc.x, nextLoc.y, curDist + 1, getOurHqLocation());
 					BroadcastInterface.enqueuePathfindingQueue(rc, nextLoc.x, nextLoc.y);
 				}
 			} else if (tileType == TerrainTile.UNKNOWN) {
@@ -206,12 +206,13 @@ public abstract class BaseRobotHandler {
 		if (Clock.getBytecodeNum() > maxBytecodesForTransfer) {
 			return;
 		}
-		RobotInfo[] nearbyAllies = rc.senseNearbyRobots(rc.getLocation(), GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED, rc.getTeam());
+		RobotInfo[] nearbyAllies = rc.senseNearbyRobots(rc.getLocation(), GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED,
+				rc.getTeam());
 		double lowestSupply = rc.getSupplyLevel();
 		double transferAmount = 0;
 		MapLocation suppliesToThisLocation = null;
 
-		MapLocation ourHq = rc.senseHQLocation();
+		MapLocation ourHq = getOurHqLocation();
 		int hqDist = rc.getLocation().distanceSquaredTo(ourHq);
 		for (RobotInfo ri : nearbyAllies) {
 			if (Clock.getBytecodeNum() > maxBytecodesForTransfer) {
@@ -333,8 +334,8 @@ public abstract class BaseRobotHandler {
 				// (sqrt(24)+1)^2 ~= 35
 				// enemyRobots = rc.senseNearbyRobots(35, rc.getTeam().opponent());
 				// TODO: the next 2 methods cost 100 and 50 bytecodes respectively. we should cache them in the broadcast array.
-				enemyTowers = rc.senseEnemyTowerLocations();
-				enemyHq = rc.senseEnemyHQLocation();
+				enemyTowers =getEnemyTowerLocations();
+				enemyHq = getEnemyHqLocation();
 			}
 
 			if (rc.isCoreReady()) {
@@ -368,8 +369,8 @@ public abstract class BaseRobotHandler {
 		@Override
 		public boolean run() throws GameActionException {
 			if (rc.isCoreReady()) {
-				MapLocation enemyHq = rc.senseEnemyHQLocation();
-				MapLocation[] enemyTowers = rc.senseEnemyTowerLocations();
+				MapLocation enemyHq = getEnemyHqLocation();
+				MapLocation[] enemyTowers = getEnemyTowerLocations();
 
 				int minDist = Integer.MAX_VALUE;
 				Direction nextDir = null;
@@ -508,13 +509,13 @@ public abstract class BaseRobotHandler {
 	// TODO: add some space to the broadcast system that records planned movement, so that robots don't crash into each other.
 
 	public int getDistanceFromOurHq(MapLocation target) throws GameActionException {
-		return BroadcastInterface.readDistance(rc, target.x, target.y);
+		return BroadcastInterface.readDistance(rc, target.x, target.y, getOurHqLocation());
 	}
 
 	public int getDistanceFromEnemyHq(MapLocation target) throws GameActionException {
 		MapLocation transformed = getSymmetricLocation(target);
 
-		return BroadcastInterface.readDistance(rc, transformed.x, transformed.y);
+		return BroadcastInterface.readDistance(rc, transformed.x, transformed.y, getOurHqLocation());
 	}
 
 	private MapLocation getSymmetricLocation(MapLocation original) throws GameActionException {
@@ -569,4 +570,51 @@ public abstract class BaseRobotHandler {
 
 	private MapConfiguration cachedConfiguration = null;
 	private float[] cachedMidpoint = null;
+
+	// some cachable things
+	// if we had more bytecodes, it might be cool to implement this as some kind of generic class
+	public MapLocation[] getOurTowerLocations() {
+		int roundNum = Clock.getRoundNum(); // TODO: does this cost (a nontrivial amount of) bytecodes? or is it just an accessor?
+		if (cacheTimeOurTowerLocations == roundNum) {
+			return cachedOurTowerLocations;
+		}
+		return cachedOurTowerLocations = rc.senseTowerLocations();
+	}
+
+	private MapLocation[] cachedOurTowerLocations = null;
+	private int cacheTimeOurTowerLocations = -1;
+
+	public MapLocation getOurHqLocation() {
+		int roundNum = Clock.getRoundNum();
+		if (cacheTimeOurHqLocation == roundNum) {
+			return cachedOurHqLocation;
+		}
+		return cachedOurHqLocation = rc.senseHQLocation();
+	}
+
+	private MapLocation cachedOurHqLocation = null;
+	private int cacheTimeOurHqLocation = -1;
+	
+
+	public MapLocation[] getEnemyTowerLocations() {
+		int roundNum = Clock.getRoundNum();
+		if (cacheTimeEnemyTowerLocations == roundNum) {
+			return cachedEnemyTowerLocations;
+		}
+		return cachedEnemyTowerLocations = rc.senseEnemyTowerLocations();
+	}
+
+	private MapLocation[] cachedEnemyTowerLocations = null;
+	private int cacheTimeEnemyTowerLocations = -1;
+
+	public MapLocation getEnemyHqLocation() {
+		int roundNum = Clock.getRoundNum();
+		if (cacheTimeEnemyHqLocation == roundNum) {
+			return cachedEnemyHqLocation;
+		}
+		return cachedEnemyHqLocation = rc.senseEnemyHQLocation();
+	}
+
+	private MapLocation cachedEnemyHqLocation = null;
+	private int cacheTimeEnemyHqLocation = -1;
 }

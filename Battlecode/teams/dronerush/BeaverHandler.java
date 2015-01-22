@@ -140,7 +140,7 @@ public class BeaverHandler extends BaseRobotHandler {
 			for (Direction d : potentialDirs) {
 				MapLocation adjLoc = rc.getLocation();
 				if (rc.canBuild(d, type)) {
-					int adjDist = BroadcastInterface.readDistance(rc, adjLoc.x, adjLoc.y);
+					int adjDist = BroadcastInterface.readDistance(rc, adjLoc.x, adjLoc.y, getOurHqLocation());
 					if (bestDir == null || adjDist > maxDist) {
 						bestDir = d;
 					}

@@ -52,10 +52,10 @@ public class DroneHandler extends BaseRobotHandler {
 	private final AttackAndRecordStatistics attackWithStats = new AttackAndRecordStatistics();
 	private final Action attack = new Attack();
 
-	private final Action charge = new MoveTo(rc.senseEnemyHQLocation(), /* avoidEnemies */false);
-	private final Action retreat = new MoveTo(rc.senseHQLocation(), /* avoidEnemies */true);
+	private final Action charge = new MoveTo(getEnemyHqLocation(), /* avoidEnemies */false);
+	private final Action retreat = new MoveTo(getOurHqLocation(), /* avoidEnemies */true);
 
-	private final Action advanceAvoidingEnemies = new MoveTo(rc.senseEnemyHQLocation(), /* avoidEnemies */true);
+	private final Action advanceAvoidingEnemies = new MoveTo(getEnemyHqLocation(), /* avoidEnemies */true);
 
 	private final Action deliverSupplies = new DeliverSupplies();
 
@@ -102,8 +102,8 @@ public class DroneHandler extends BaseRobotHandler {
 				// (sqrt(24)+1)^2 ~= 35
 				enemyRobots = rc.senseNearbyRobots(35, rc.getTeam().opponent());
 				// TODO: the next 2 methods cost 100 and 50 bytecodes respectively. we should cache them in the broadcast array.
-				enemyTowers = rc.senseEnemyTowerLocations();
-				enemyHq = rc.senseEnemyHQLocation();
+				enemyTowers = getEnemyTowerLocations();
+				enemyHq = getEnemyHqLocation();
 			}
 			if (rc.isCoreReady()) {
 				for (Direction d : Util.getDirectionsToward(rc.getLocation(), target)) {
@@ -167,8 +167,8 @@ public class DroneHandler extends BaseRobotHandler {
 						// TODO: we call these several times in this file. maybe we should make them a static memberof DroneHandler,
 						// and lazily initialize them each turn
 						enemyRobots = rc.senseNearbyRobots(35, rc.getTeam().opponent());
-						enemyTowers = rc.senseEnemyTowerLocations();
-						enemyHq = rc.senseEnemyHQLocation();
+						enemyTowers = getEnemyTowerLocations();
+						enemyHq = getEnemyHqLocation();
 						for (Direction d : Util.getDirectionsToward(rc.getLocation(), targetRobot.location)) {
 							// TODO: we should also avoid enemies
 							if (rc.canMove(d) && !isNearEnemy(rc.getLocation().add(d))) {

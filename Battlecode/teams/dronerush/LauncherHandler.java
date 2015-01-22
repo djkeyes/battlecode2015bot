@@ -90,7 +90,7 @@ public class LauncherHandler extends BaseBuildingHandler {
 			// also check the towers and hq
 			// (sorry this code is messy. maybe we should add a function or array in Util
 			if (bestDir == null) {
-				for (MapLocation enemyTower : rc.senseEnemyTowerLocations()) {
+				for (MapLocation enemyTower : getEnemyTowerLocations()) {
 					int distSq = enemyTower.distanceSquaredTo(rc.getLocation());
 					Direction curDir = rc.getLocation().directionTo(enemyTower);
 					if (rc.canLaunch(curDir)) {
@@ -102,7 +102,7 @@ public class LauncherHandler extends BaseBuildingHandler {
 				}
 			}
 			if (bestDir == null) {
-				MapLocation enemyHq = rc.senseEnemyHQLocation();
+				MapLocation enemyHq = getEnemyHqLocation();
 				int distSq = enemyHq.distanceSquaredTo(rc.getLocation());
 				Direction curDir = rc.getLocation().directionTo(enemyHq);
 				if (rc.canLaunch(curDir)) {
