@@ -3,6 +3,7 @@ package dronerush;
 import java.util.LinkedList;
 import java.util.List;
 
+import battlecode.common.Clock;
 import battlecode.common.CommanderSkillType;
 import battlecode.common.GameActionException;
 import battlecode.common.GameConstants;
@@ -66,13 +67,17 @@ public class CommanderHandler extends BaseRobotHandler {
 			MapLocation[] potentialLocs = MapLocation.getAllMapLocationsWithinRadiusSq(rc.getLocation(),
 					GameConstants.FLASH_RANGE_SQUARED);
 			// should we use the pathfinding dist or the actual dist here?
-			// it almost makes sense to use the actual dist, since we can flash over obstacles and we'd need to use this in a pinch
+			// it sort of makes sense to use the actual dist, since we can flash over obstacles and we'd need to use this in a pinch
 			int minDist = rc.getLocation().distanceSquaredTo(ourHq);
 			MapLocation best = null;
+			int start = Clock.getBytecodeNum();
+			// System.out.println("bytecodes at start of loop: " + start);
 			for (MapLocation loc : potentialLocs) {
+				// System.out.println("bytecodes at current iteration: " + Clock.getBytecodeNum());
 				int locDist = loc.distanceSquaredTo(ourHq);
 				if (locDist < minDist) {
-					if (rc.senseRobotAtLocation(loc) == null) {
+
+					if (rc.senseTerrainTile(loc).isTraversable() && rc.senseRobotAtLocation(loc) == null) {
 						if (!inEnemyHqOrTowerRange(loc)) {
 							minDist = locDist;
 							best = loc;

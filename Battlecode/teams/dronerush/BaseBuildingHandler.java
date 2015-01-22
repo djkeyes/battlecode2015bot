@@ -2,14 +2,48 @@ package dronerush;
 
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
+import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
+import battlecode.common.RobotInfo;
 import battlecode.common.RobotType;
 
 public abstract class BaseBuildingHandler extends BaseRobotHandler {
 
 	BaseBuildingHandler(RobotController rc) {
 		super(rc);
+	}
+
+	@Override
+	protected boolean distributeSupply() throws GameActionException {
+		boolean foundSupplyTransfer = super.distributeSupply();
+		if (!foundSupplyTransfer && hasTimeToTransferSupply()) {
+			// try transferring to buildings
+			
+			RobotInfo[] nearbyAllies = rc.senseNearbyRobots(rc.getLocation(), GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED,
+					rc.getTeam());
+			MapLocation bestTarget = null;
+			MapLocation ourHq = getOurHqLocation();
+			int maxHqDist = rc.getLocation().distanceSquaredTo(ourHq);
+			for (RobotInfo ally : nearbyAllies) {
+				if (!hasTimeToTransferSupply()) {
+					break;
+				}
+
+				if (ally.type.isBuilding) {
+					int theirHqDist = ally.location.distanceSquaredTo(ourHq);
+					if (theirHqDist > maxHqDist) {
+						bestTarget = ally.location;
+						maxHqDist = theirHqDist;
+					}
+				}
+			}
+			if (bestTarget != null) {
+				rc.transferSupplies((int) rc.getSupplyLevel(), bestTarget);
+				return true;
+			}
+		}
+		return false;
 	}
 
 	// TODO: maybe this should accept a predicate function? like: new SpawnUnitUntilPredicate(new Predicate(){});

@@ -43,10 +43,11 @@ public class DroneHandler extends BaseRobotHandler {
 	}
 
 	@Override
-	protected void distributeSupply() throws GameActionException {
+	protected boolean distributeSupply() throws GameActionException {
 		if (!isSupplyCourier) {
-			super.distributeSupply();
+			return super.distributeSupply();
 		}
+		return false;
 	}
 
 	private final AttackAndRecordStatistics attackWithStats = new AttackAndRecordStatistics();

@@ -6,7 +6,7 @@ import java.util.List;
 import battlecode.common.GameActionException;
 import battlecode.common.RobotController;
 
-public class HandwashStationHandler extends BaseRobotHandler {
+public class HandwashStationHandler extends BaseBuildingHandler {
 
 	protected HandwashStationHandler(RobotController rc) {
 		super(rc);

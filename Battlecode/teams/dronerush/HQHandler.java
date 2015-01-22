@@ -54,17 +54,17 @@ public class HQHandler extends BaseBuildingHandler {
 	}
 
 	@Override
-	public void distributeSupply() throws GameActionException {
+	public boolean distributeSupply() throws GameActionException {
 		// drones are our primary supply distribution mechanism, so if there are some nearby drones, give them lots of supply
 		RobotInfo[] nearby = rc.senseNearbyRobots(8, rc.getTeam());
 		for(RobotInfo robot : nearby){
 			if(robot.type == RobotType.DRONE){
 				rc.transferSupplies((int) rc.getSupplyLevel(), robot.location);
-				return;
+				return true;
 			}
 		}
 		
-		super.distributeSupply();
+		return super.distributeSupply();
 	}
 
 	private void checkIfRotatedOrReflected() throws GameActionException {

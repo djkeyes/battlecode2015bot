@@ -188,7 +188,8 @@ public abstract class BaseRobotHandler {
 
 	private boolean isSupplyLow = false;
 
-	protected void distributeSupply() throws GameActionException {
+	// return true if there was a transfer
+	protected boolean distributeSupply() throws GameActionException {
 		// ask couriers for supply, if they're available
 		if (!rc.getType().isBuilding) {
 			double supply = rc.getSupplyLevel();
@@ -202,20 +203,20 @@ public abstract class BaseRobotHandler {
 
 		// if there are a lot of nearby allies, we might run out of bytecodes.
 		// invoking transferSupplies() costs us 500 bytecodes (it's really expensive!)
-		int maxBytecodesForTransfer = maxBytecodesToUse() - 500;
-		if (Clock.getBytecodeNum() > maxBytecodesForTransfer) {
-			return;
+		if (!hasTimeToTransferSupply()) {
+			return false;
 		}
-		RobotInfo[] nearbyAllies = rc.senseNearbyRobots(rc.getLocation(), GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED,
-				rc.getTeam());
-		double lowestSupply = rc.getSupplyLevel();
-		double transferAmount = 0;
+		RobotInfo[] nearbyAllies = rc.senseNearbyRobots(rc.getLocation(), GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED, rc.getTeam());
+		double lowestSupply;
+		if(rc.getType().isBuilding){
+			lowestSupply = Double.MAX_VALUE;
+		} else {
+			lowestSupply = rc.getSupplyLevel();
+		}
 		MapLocation suppliesToThisLocation = null;
 
-		MapLocation ourHq = getOurHqLocation();
-		int hqDist = rc.getLocation().distanceSquaredTo(ourHq);
 		for (RobotInfo ri : nearbyAllies) {
-			if (Clock.getBytecodeNum() > maxBytecodesForTransfer) {
+			if (!hasTimeToTransferSupply()) {
 				break;
 			}
 
@@ -224,21 +225,27 @@ public abstract class BaseRobotHandler {
 			}
 
 			if (ri.type.isBuilding) {
-				// buildings don't need supply, so only give it supply if it's closer to the warfront
-				int riDist = ri.location.distanceSquaredTo(ourHq);
-				if (riDist <= hqDist) {
-					continue;
-				}
+				// buildings don't need supply
+				// sometimes buildings will transfer supply to each other if there aren't units nearby, but that's handled by a
+				// subclass
+				continue;
 			}
 			if (ri.supplyLevel < lowestSupply) {
 				lowestSupply = ri.supplyLevel;
-				transferAmount = (rc.getSupplyLevel() - ri.supplyLevel) / 2;
 				suppliesToThisLocation = ri.location;
 			}
 		}
 		if (suppliesToThisLocation != null) {
+			double transferAmount = 0;
+			if (rc.getType().isBuilding) {
+				transferAmount = rc.getSupplyLevel();
+			} else {
+				transferAmount = (rc.getSupplyLevel() - lowestSupply) / 2;
+			}
+			
 			try {
 				rc.transferSupplies((int) transferAmount, suppliesToThisLocation);
+				return true;
 			} catch (Exception e) {
 				// this should be fixed. if it hasn't happened for several commits, just delete these lines.
 				// I think this happens when a unit misses the turn change (too many bytecodes)
@@ -248,9 +255,15 @@ public abstract class BaseRobotHandler {
 			}
 		}
 
+		return false;
 	}
 
 	// some default action implementations
+
+	protected boolean hasTimeToTransferSupply() {
+		int maxBytecodesForTransfer = maxBytecodesToUse() - 500;
+		return (Clock.getBytecodeNum() < maxBytecodesForTransfer);
+	}
 
 	// do nothing
 	public class Idle implements Action {
