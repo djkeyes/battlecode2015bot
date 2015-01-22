@@ -3,6 +3,7 @@ package dronerush;
 import java.util.LinkedList;
 import java.util.List;
 
+import battlecode.common.Clock;
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.MapLocation;
@@ -21,6 +22,16 @@ public class BeaverHandler extends BaseRobotHandler {
 		// so in general, that should be their priority
 		LinkedList<Action> result = new LinkedList<Action>();
 		result.add(attack);
+		
+		// some turn-based logic
+		int roundNum = Clock.getRoundNum();
+		if(roundNum >= 1875){
+			// SUPERIOR SANITATION
+			result.add(buildHandwashStation);
+			result.add(mine);
+			result.add(scout);
+			return result;
+		}
 
 		if (BroadcastInterface.shouldBuildMoreSupplyDepots(rc)) {
 			result.add(buildSupplyDepot);
