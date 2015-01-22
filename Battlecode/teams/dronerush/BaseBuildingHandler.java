@@ -94,6 +94,7 @@ public abstract class BaseBuildingHandler extends BaseRobotHandler {
 
 		private Direction[] findSafeSpawningDirs() {
 			// precompute directions that are out of enemy tower range
+			// we could update this on every round, but it's sort of expensive. (like 300+ bytecodes per direction)
 			// even if we kill a tower, it's fine if we don't update this. we'll just spawn in a different direction
 			Direction[] tmp = new Direction[Util.actualDirections.length];
 			int size = 0;
