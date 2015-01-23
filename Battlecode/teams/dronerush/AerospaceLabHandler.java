@@ -16,7 +16,7 @@ public class AerospaceLabHandler extends BaseBuildingHandler {
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
 		LinkedList<Action> result = new LinkedList<Action>();
-			result.add(makeLauncher);
+		result.add(makeLauncher);
 		return result;
 	}
 

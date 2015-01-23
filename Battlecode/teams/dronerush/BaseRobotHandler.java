@@ -73,7 +73,7 @@ public abstract class BaseRobotHandler {
 	}
 
 	public int maxBytecodesToUse() {
-		if(rc.getSupplyLevel() <= 1.0){
+		if (rc.getSupplyLevel() <= 1.0) {
 			// if we're unsupplied, we get a bunch of free bytecodes
 			return 4000;
 		} else {
@@ -134,7 +134,7 @@ public abstract class BaseRobotHandler {
 	public abstract List<Action> chooseActions() throws GameActionException;
 
 	public void onExcessBytecodes() throws GameActionException {
-		doPathfinding();
+		// doPathfinding();
 	}
 
 	protected void doPathfinding() throws GameActionException {
@@ -213,9 +213,10 @@ public abstract class BaseRobotHandler {
 		if (!hasTimeToTransferSupply()) {
 			return false;
 		}
-		RobotInfo[] nearbyAllies = rc.senseNearbyRobots(rc.getLocation(), GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED, rc.getTeam());
+		RobotInfo[] nearbyAllies = rc.senseNearbyRobots(rc.getLocation(), GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED,
+				rc.getTeam());
 		double lowestSupply;
-		if(rc.getType().isBuilding){
+		if (rc.getType().isBuilding) {
 			lowestSupply = Double.MAX_VALUE;
 		} else {
 			lowestSupply = rc.getSupplyLevel();
@@ -249,7 +250,7 @@ public abstract class BaseRobotHandler {
 			} else {
 				transferAmount = (rc.getSupplyLevel() - lowestSupply) / 2;
 			}
-			
+
 			try {
 				rc.transferSupplies((int) transferAmount, suppliesToThisLocation);
 				return true;
@@ -336,7 +337,13 @@ public abstract class BaseRobotHandler {
 	}
 
 	public class MoveTowardEnemyHq implements Action {
-		boolean avoidEnemies;
+		private boolean avoidEnemies;
+
+		// bug mode state
+		private int distSqToHqAtBugModeStart;
+		boolean inBugMode = false;
+		private MapLocation lastWall;
+		private boolean isGoingLeft;
 
 		public MoveTowardEnemyHq(boolean avoidEnemies) {
 			this.avoidEnemies = avoidEnemies;
@@ -344,28 +351,143 @@ public abstract class BaseRobotHandler {
 
 		@Override
 		public boolean run() throws GameActionException {
-
+			// okay, here's the plan:
+			// our BFS is (almost) optimal. so if it has results, just use them
+			// if not though, we need a backup plan
+			// scouting outward is a shitty backup plan. Bug Navigation is where the money is.
 			if (rc.isCoreReady()) {
-				int minDist = Integer.MAX_VALUE;
-				Direction nextDir = null;
-				for (Direction adjDir : Util.actualDirections) {
+				// cache some things really quick to reduce computation
+				// this is a null-terminated list of traversable directions (sort of like a cstring)
+				Direction[] traversableDirections = getTraversableDirections();
+
+			
+				if (bfsToHq(traversableDirections)) {
+					inBugMode = false;
+					return true;
+				}
+				// bug navigation
+				if (bugNavigateToHq(traversableDirections)) {
+					return true;
+				}
+
+			}
+			return false;
+		}
+
+		public Direction[] getTraversableDirections() {
+			Direction[] result = new Direction[8];
+			int size = 0;
+
+			for (Direction adjDir : Util.actualDirections) {
+				// TODO: once we get to an enemy tower and can't get any closer (and we're in bug mode), it really doesn't make sense to path farther away
+				// so we should fix that somehow. like by changing bugging direction
+				if (rc.canMove(adjDir)) {
 					MapLocation adjLoc = rc.getLocation().add(adjDir);
-					if (rc.canMove(adjDir)) {
-						// TODO: should we also avoid enemy units here? is that a good strategic decision?
-						if (!avoidEnemies || !inEnemyHqOrTowerRange(adjLoc)) {
-							int adjDist = getDistanceFromEnemyHq(adjLoc);
-							// 0 indicates unexplored tiles
-							if (adjDist != 0 && adjDist < minDist) {
-								minDist = adjDist;
-								nextDir = adjDir;
-							}
-						}
+					// TODO: should we also avoid enemy units here? is that a good strategic decision?
+					if (!avoidEnemies || !inEnemyHqOrTowerRange(adjLoc)) {
+						result[size++] = adjDir;
+					}
+				}
+			}
+			return result;
+		}
+
+		public boolean bugNavigateToHq(Direction[] traversableDirections) throws GameActionException {
+			// how does bug navigation work? first, you need a metric, like euclidian distance to hq.
+			// first, you follow the metric. however, if you get stuck, you enter bug mode. You also pick a direction ordering to
+			// follow, clockwise or counterclockwise.
+			// BUG MODE:
+			// 1. save startDist = euclidianDist(curLoc, hq)
+			// 2. pick the wall orthogonal to you, relative to your previous direction
+			// 3. go in your favorite direction ordering, relative to the wall, and save the direction you went
+			// 4. if you are now closer to the hq than you were when you started (euclidianDist(curLoc, hq) < startDist),
+			// leave bug mode
+			// 4b. (alternatively, if you have a BFS distance, leave bug mode. but this is handled trivially, you'll see.)
+			// 5. otherwise, go to step 2.
+
+			MapLocation enemyHq = getEnemyHqLocation();
+
+			if (inBugMode) {
+				if (enemyHq.distanceSquaredTo(rc.getLocation()) < distSqToHqAtBugModeStart) {
+					inBugMode = false;
+				}
+			}
+
+			if (!inBugMode) {
+				int curDist = enemyHq.distanceSquaredTo(rc.getLocation());
+				int minDist = curDist;
+				Direction nextDir = null;
+				for (int i = 0; i < traversableDirections.length && traversableDirections[i] != null; i++) {
+					Direction adjDir = traversableDirections[i];
+					MapLocation adjLoc = rc.getLocation().add(adjDir);
+					int adjDist = enemyHq.distanceSquaredTo(adjLoc);
+					if (adjDist < minDist) {
+						minDist = adjDist;
+						nextDir = adjDir;
 					}
 				}
 				if (nextDir != null) {
 					rc.move(nextDir);
 					return true;
+				} else {
+					inBugMode = true;
+					distSqToHqAtBugModeStart = curDist;
+					isGoingLeft = gen.nextBoolean();
+					Direction hqDir = rc.getLocation().directionTo(enemyHq);
+					lastWall = rc.getLocation().add(hqDir);
 				}
+
+			}
+			if (inBugMode) {
+				// BUGMODE
+				Direction facingDir = rc.getLocation().directionTo(lastWall);
+				// find a traversable tile
+				for (int i = 0; i < 8; i++) {
+					if (isGoingLeft) {
+						facingDir = facingDir.rotateLeft();
+					} else {
+						facingDir = facingDir.rotateRight();
+					}
+					// TODO: initialize traversableDirections to be in an order conducive to bug pathfinding, so we can just iterate
+					// through it
+					boolean isTraversable = false;
+					for (Direction d : traversableDirections) {
+						if (facingDir == d) {
+							isTraversable = true;
+							break;
+						}
+					}
+					if (isTraversable) {
+						if (isGoingLeft) {
+							lastWall = rc.getLocation().add(facingDir.rotateRight());
+						} else {
+							lastWall = rc.getLocation().add(facingDir.rotateLeft());
+						}
+						rc.move(facingDir);
+						return true;
+					}
+				}
+			}
+
+			return false;
+		}
+
+		public boolean bfsToHq(Direction[] traversableDirections) throws GameActionException {
+			int minDist = Integer.MAX_VALUE;
+			Direction nextDir = null;
+			for (int i = 0; i < traversableDirections.length && traversableDirections[i] != null; i++) {
+				Direction adjDir = traversableDirections[i];
+				MapLocation adjLoc = rc.getLocation().add(adjDir);
+				int adjDist = getDistanceFromEnemyHq(adjLoc);
+				// 0 indicates unexplored tiles
+				if (adjDist != 0 && adjDist < minDist) {
+					minDist = adjDist;
+					nextDir = adjDir;
+				}
+			}
+			if (nextDir != null) {
+				rc.move(nextDir);
+				return true;
 			}
 			return false;
 		}
