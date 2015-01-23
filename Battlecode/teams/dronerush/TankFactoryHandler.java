@@ -16,7 +16,9 @@ public class TankFactoryHandler extends BaseBuildingHandler {
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
 		LinkedList<Action> result = new LinkedList<Action>();
-		result.add(makeTank);
+		if (Strategy.shouldMakeTanks(rc)) {
+			result.add(makeTank);
+		}
 		return result;
 	}
 

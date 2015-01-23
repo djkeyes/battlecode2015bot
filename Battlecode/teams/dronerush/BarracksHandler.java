@@ -19,7 +19,9 @@ public class BarracksHandler extends BaseBuildingHandler {
 
 		LinkedList<Action> result = new LinkedList<Action>();
 		if (numTankFactories >= 1) {
-			result.add(makeBasher);
+			if (Strategy.shouldMakeBashers(rc)) {
+				result.add(makeBasher);
+			}
 		}
 		return result;
 	}

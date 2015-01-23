@@ -94,10 +94,10 @@ public class HQHandler extends BaseBuildingHandler {
 	}
 
 	private final int TANKS_NEEDED_TO_ATTACK = 15;
-	private final int BASHERS_NEEDED_TO_ATTACK = 15;
-	private final int LAUNCHERS_NEEDED_TO_ATTACK = 10;
+	private final int BASHERS_NEEDED_TO_ATTACK = 10;
+	private final int LAUNCHERS_NEEDED_TO_ATTACK = 5;
 	private final int TANKS_NEEDED_TO_RETREAT = 5;
-	private final int BASHERS_NEEDED_TO_RETREAT = 5;
+	private final int BASHERS_NEEDED_TO_RETREAT = 2;
 	private final int LAUNCHERS_NEEDED_TO_RETREAT = 2;
 
 	private void determineAttackSignal() throws GameActionException {
@@ -106,15 +106,15 @@ public class HQHandler extends BaseBuildingHandler {
 		int basherCount = BroadcastInterface.getRobotCount(rc, RobotType.BASHER);
 		int launcherCount = BroadcastInterface.getRobotCount(rc, RobotType.LAUNCHER);
 		if (isSet) {
-			boolean shouldRetreat = (tankCount < TANKS_NEEDED_TO_RETREAT) && (basherCount < BASHERS_NEEDED_TO_RETREAT)
-					&& launcherCount < (LAUNCHERS_NEEDED_TO_RETREAT);
+			boolean shouldRetreat = (tankCount <= TANKS_NEEDED_TO_RETREAT) && (basherCount <= BASHERS_NEEDED_TO_RETREAT)
+					&& launcherCount <= (LAUNCHERS_NEEDED_TO_RETREAT);
 			if (shouldRetreat) {
 				BroadcastInterface.setAttackMode(rc, false);
 			}
 
 		} else {
-			boolean shouldAttack = (tankCount > TANKS_NEEDED_TO_ATTACK) && (basherCount > BASHERS_NEEDED_TO_ATTACK)
-					&& launcherCount > (LAUNCHERS_NEEDED_TO_ATTACK);
+			boolean shouldAttack = (tankCount >= TANKS_NEEDED_TO_ATTACK) && (basherCount >= BASHERS_NEEDED_TO_ATTACK)
+					&& launcherCount >= (LAUNCHERS_NEEDED_TO_ATTACK);
 			if (shouldAttack) {
 				BroadcastInterface.setAttackMode(rc, true);
 			}
