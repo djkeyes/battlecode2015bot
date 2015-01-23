@@ -392,14 +392,35 @@ public abstract class BaseRobotHandler {
 			Direction[] result = new Direction[8];
 			int size = 0;
 
-			for (Direction adjDir : Util.actualDirections) {
-				// TODO: once we get to an enemy tower and can't get any closer (and we're in bug mode), it really doesn't make sense
-				// to path farther away
-				// so we should fix that somehow. like by changing bugging direction
-				if (rc.canMove(adjDir)) {
+			if (avoidEnemies) {
+				// once we get to an enemy tower and can't get any closer (and we're in bug mode), it really doesn't make sense to path
+				// farther away
+				// to fix this, if ANY of the directions are near a tower, we ONLY return adjacent directions
+				boolean nearTower = false;
+				boolean[] isDirNearTower = new boolean[Direction.values().length];
+				for (Direction adjDir : Util.actualDirections) {
 					MapLocation adjLoc = rc.getLocation().add(adjDir);
-					// TODO: should we also avoid enemy units here? is that a good strategic decision?
-					if (!avoidEnemies || !inEnemyHqOrTowerRange(adjLoc)) {
+					if (rc.canMove(adjDir) && inEnemyHqOrTowerRange(adjLoc)) {
+						nearTower = true;
+						isDirNearTower[adjDir.ordinal()] = true;
+					}
+				}
+				for (Direction adjDir : Util.actualDirections) {
+					if (rc.canMove(adjDir)) {
+						// TODO: should we also avoid enemy units here? is that a good strategic decision?
+						if (nearTower) {
+							if ((isDirNearTower[adjDir.rotateLeft().ordinal()] || isDirNearTower[adjDir.rotateRight().ordinal()])
+									&& !isDirNearTower[adjDir.ordinal()]) {
+								result[size++] = adjDir;
+							}
+						} else {
+							result[size++] = adjDir;
+						}
+					}
+				}
+			} else {
+				for (Direction adjDir : Util.actualDirections) {
+					if (rc.canMove(adjDir)) {
 						result[size++] = adjDir;
 					}
 				}
@@ -470,7 +491,7 @@ public abstract class BaseRobotHandler {
 				lastRoundInBugMode = Clock.getRoundNum();
 
 				for (int i = 0; i < lastNBugModeLocations.length; i++) {
-					if(lastNBugModeLocations[i] == null){
+					if (lastNBugModeLocations[i] == null) {
 						break;
 					}
 					if (rc.getLocation().equals(lastNBugModeLocations[i])) {
