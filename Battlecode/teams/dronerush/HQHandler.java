@@ -105,16 +105,17 @@ public class HQHandler extends BaseBuildingHandler {
 		int tankCount = BroadcastInterface.getRobotCount(rc, RobotType.TANK);
 		int basherCount = BroadcastInterface.getRobotCount(rc, RobotType.BASHER);
 		int launcherCount = BroadcastInterface.getRobotCount(rc, RobotType.LAUNCHER);
+		boolean isTimeToPullTheBoys = shouldPullTheBoys();
 		if (isSet) {
 			boolean shouldRetreat = (tankCount <= TANKS_NEEDED_TO_RETREAT) && (basherCount <= BASHERS_NEEDED_TO_RETREAT)
-					&& launcherCount <= (LAUNCHERS_NEEDED_TO_RETREAT);
+					&& launcherCount <= (LAUNCHERS_NEEDED_TO_RETREAT) && !isTimeToPullTheBoys;
 			if (shouldRetreat) {
 				BroadcastInterface.setAttackMode(rc, false);
 			}
 
 		} else {
-			boolean shouldAttack = (tankCount >= TANKS_NEEDED_TO_ATTACK) && (basherCount >= BASHERS_NEEDED_TO_ATTACK)
-					&& launcherCount >= (LAUNCHERS_NEEDED_TO_ATTACK);
+			boolean shouldAttack = ((tankCount >= TANKS_NEEDED_TO_ATTACK) && (basherCount >= BASHERS_NEEDED_TO_ATTACK) && launcherCount >= (LAUNCHERS_NEEDED_TO_ATTACK))
+					|| isTimeToPullTheBoys;
 			if (shouldAttack) {
 				BroadcastInterface.setAttackMode(rc, true);
 			}

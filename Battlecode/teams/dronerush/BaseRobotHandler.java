@@ -862,4 +862,11 @@ public abstract class BaseRobotHandler {
 	}
 
 	private MapLocation cachedEnemyHqLocation = null;
+
+	// at the end of the game, everyone should attack.
+	// miners included.
+	// (but no beavers, they have handwash stations to build
+	public boolean shouldPullTheBoys() {
+		return rc.getRoundLimit() - Clock.getRoundNum() < 200;
+	}
 }
