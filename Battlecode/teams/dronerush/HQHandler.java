@@ -33,8 +33,24 @@ public class HQHandler extends BaseBuildingHandler {
 		countUnitsAndCheckSupply();
 
 		determineAttackSignal();
+		determineShouldPullTheBoys();
 
 		BroadcastInterface.resetAbundantOre(rc);
+	}
+
+	private void determineShouldPullTheBoys() throws GameActionException {
+		boolean isSet = BroadcastInterface.readPullBoysMode(rc);
+		if (!isSet) {
+			// also factor in time to reach opponent
+			int bfsDist = getDistanceFromEnemyHq(getOurHqLocation());
+			int euclidianDist = (int) Math.sqrt(getOurHqLocation().distanceSquaredTo(getEnemyHqLocation()));
+			// the 3 here is to factor in movement delay. most units cost 2 when supplied.
+			int maxDist = 2*Math.max(bfsDist, euclidianDist);
+
+			if (rc.getRoundLimit() - Clock.getRoundNum() < 200 + maxDist) {
+				BroadcastInterface.setPullBoysMode(rc, true);
+			}
+		}
 	}
 
 	@Override

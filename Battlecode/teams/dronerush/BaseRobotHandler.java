@@ -866,7 +866,7 @@ public abstract class BaseRobotHandler {
 	// at the end of the game, everyone should attack.
 	// miners included.
 	// (but no beavers, they have handwash stations to build
-	public boolean shouldPullTheBoys() {
-		return rc.getRoundLimit() - Clock.getRoundNum() < 200;
+	public boolean shouldPullTheBoys() throws GameActionException {
+		return BroadcastInterface.readPullBoysMode(rc);
 	}
 }

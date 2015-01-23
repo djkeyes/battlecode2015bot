@@ -36,6 +36,7 @@ public class BroadcastInterface {
 	// 61636: supply queue current size
 	// 61637-64637: supply queue
 	// 64638: build more supply depots signal
+	// 64639: "pull the boys" and all attack signal
 
 	// is there a better/more efficient way to do this? we could use an enummap, but i think that's less efficient.
 	private static int getRobotIndex(RobotType type) {
@@ -313,6 +314,19 @@ public class BroadcastInterface {
 
 	public static void setBuildMoreSupplyDepots(RobotController rc, boolean shouldBuildMore) throws GameActionException {
 		rc.broadcast(moreSupplyDepotChannel, shouldBuildMore ? 1 : 0);
+	}
+
+	private static final int boysChannel = 64639;
+	public static boolean readPullBoysMode(RobotController rc) throws GameActionException {
+		return rc.readBroadcast(boysChannel) == 1;
+	}
+
+	public static void setPullBoysMode(RobotController rc, boolean shouldPull) throws GameActionException {
+		if (shouldPull) {
+			rc.broadcast(boysChannel, 1);
+		} else {
+			rc.broadcast(boysChannel, 0);
+		}
 	}
 
 }
