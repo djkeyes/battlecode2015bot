@@ -58,13 +58,13 @@ public class HQHandler extends BaseBuildingHandler {
 	public boolean distributeSupply() throws GameActionException {
 		// drones are our primary supply distribution mechanism, so if there are some nearby drones, give them lots of supply
 		RobotInfo[] nearby = rc.senseNearbyRobots(8, rc.getTeam());
-		for(RobotInfo robot : nearby){
-			if(robot.type == RobotType.DRONE){
+		for (RobotInfo robot : nearby) {
+			if (robot.type == RobotType.DRONE) {
 				rc.transferSupplies((int) rc.getSupplyLevel(), robot.location);
 				return true;
 			}
 		}
-		
+
 		return super.distributeSupply();
 	}
 
@@ -93,27 +93,36 @@ public class HQHandler extends BaseBuildingHandler {
 				isHorizontalReflection, isDiagonalReflection, isReverseDiagonalReflection, isRotation));
 	}
 
+	private final int TANKS_NEEDED_TO_ATTACK = 15;
+	private final int BASHERS_NEEDED_TO_ATTACK = 15;
+	private final int LAUNCHERS_NEEDED_TO_ATTACK = 10;
+	private final int TANKS_NEEDED_TO_RETREAT = 5;
+	private final int BASHERS_NEEDED_TO_RETREAT = 5;
+	private final int LAUNCHERS_NEEDED_TO_RETREAT = 2;
 
 	private void determineAttackSignal() throws GameActionException {
-		// boolean isSet = BroadcastInterface.readAttackMode(rc);
-		// if (isSet) {
-		// if (BroadcastInterface.getRobotCount(rc, RobotType.DRONE) <= DRONES_NEEDED_TO_RETREAT) {
-		// BroadcastInterface.setAttackMode(rc, false);
-		// }
-		// } else {
-		// if (BroadcastInterface.getRobotCount(rc, RobotType.DRONE) >= DRONES_NEEDED_TO_CHARGE) {
-		// BroadcastInterface.setAttackMode(rc, true);
-		// }
-		// }
-		BroadcastInterface.setAttackMode(rc, Clock.getRoundNum() > 1500);
+		boolean isSet = BroadcastInterface.readAttackMode(rc);
+		int tankCount = BroadcastInterface.getRobotCount(rc, RobotType.TANK);
+		int basherCount = BroadcastInterface.getRobotCount(rc, RobotType.BASHER);
+		int launcherCount = BroadcastInterface.getRobotCount(rc, RobotType.LAUNCHER);
+		if (isSet) {
+			boolean shouldRetreat = (tankCount < TANKS_NEEDED_TO_RETREAT) && (basherCount < BASHERS_NEEDED_TO_RETREAT)
+					&& launcherCount < (LAUNCHERS_NEEDED_TO_RETREAT);
+			if (shouldRetreat) {
+				BroadcastInterface.setAttackMode(rc, false);
+			}
+
+		} else {
+			boolean shouldAttack = (tankCount > TANKS_NEEDED_TO_ATTACK) && (basherCount > BASHERS_NEEDED_TO_ATTACK)
+					&& launcherCount > (LAUNCHERS_NEEDED_TO_ATTACK);
+			if (shouldAttack) {
+				BroadcastInterface.setAttackMode(rc, true);
+			}
+		}
 	}
 
 	// it turns out EnumMaps really suck. they cost like 5x more bytecodes.
 	private final int[] counts = new int[RobotType.values().length];
-
-	private final RobotType[] releventTypes = { RobotType.BEAVER, RobotType.MINER, RobotType.SOLDIER, RobotType.DRONE, RobotType.TANK,
-			RobotType.MINERFACTORY, RobotType.BARRACKS, RobotType.HELIPAD, RobotType.TANKFACTORY, RobotType.AEROSPACELAB,
-			RobotType.LAUNCHER, RobotType.TRAININGFIELD, RobotType.TECHNOLOGYINSTITUTE, RobotType.COMMANDER, RobotType.SUPPLYDEPOT };
 
 	// we need to factor in that robots will always use some extra bytecodes
 	// that being said, we won't supply *everyone*, just a fraction of our army
@@ -125,14 +134,14 @@ public class HQHandler extends BaseBuildingHandler {
 		int MAX_MAP_RADIUS = 100000000;
 		RobotInfo[] ourRobots = rc.senseNearbyRobots(MAX_MAP_RADIUS, rc.getTeam());
 
-		for (RobotType type : releventTypes) {
-			counts[type.ordinal()] = 0;
+		for (int i = 0; i < counts.length; i++) {
+			counts[i] = 0;
 		}
 		for (RobotInfo robot : ourRobots) {
 			counts[robot.type.ordinal()]++;
 		}
 		int supplyUpkeepNeeded = 0;
-		for (RobotType type : releventTypes) {
+		for (RobotType type : RobotType.values()) {
 			BroadcastInterface.setRobotCount(rc, type, counts[type.ordinal()]);
 			supplyUpkeepNeeded += counts[type.ordinal()] * type.supplyUpkeep;
 		}
