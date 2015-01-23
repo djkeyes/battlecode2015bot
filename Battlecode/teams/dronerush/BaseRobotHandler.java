@@ -73,7 +73,14 @@ public abstract class BaseRobotHandler {
 	}
 
 	public int maxBytecodesToUse() {
-		return 1500;
+		if(rc.getSupplyLevel() <= 1.0){
+			// if we're unsupplied, we get a bunch of free bytecodes
+			return 4000;
+		} else {
+			// however if we have supply, those bytecodes cost supply
+			// weird, eh?
+			return 1500;
+		}
 	}
 
 	public void run() {

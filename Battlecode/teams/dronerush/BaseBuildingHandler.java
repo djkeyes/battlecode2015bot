@@ -15,11 +15,16 @@ public abstract class BaseBuildingHandler extends BaseRobotHandler {
 	}
 
 	@Override
+	public int maxBytecodesToUse() {
+		return 1500;
+	}
+
+	@Override
 	protected boolean distributeSupply() throws GameActionException {
 		boolean foundSupplyTransfer = super.distributeSupply();
 		if (!foundSupplyTransfer && hasTimeToTransferSupply()) {
 			// try transferring to buildings
-			
+
 			RobotInfo[] nearbyAllies = rc.senseNearbyRobots(rc.getLocation(), GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED,
 					rc.getTeam());
 			MapLocation bestTarget = null;
