@@ -343,6 +343,10 @@ public abstract class BaseRobotHandler {
 		private boolean inBugMode = false;
 		private int lastRoundInBugMode = -2;
 		private MapLocation lastWall;
+		private MapLocation bugModeStartLocation;
+		private MapLocation[] lastNBugModeLocations;
+		private int bugModeLocationsToStore = 10;
+		private int bugModeLocationIterator = 0;
 		private boolean isGoingLeft;
 
 		public MoveTowardEnemyHq(boolean avoidEnemies) {
@@ -422,6 +426,14 @@ public abstract class BaseRobotHandler {
 				if (enemyHq.distanceSquaredTo(rc.getLocation()) < distSqToHqAtBugModeStart) {
 					inBugMode = false;
 				}
+				// loop detection
+				// this is helpful if we were blocked by another bot when we entered bug mode, but now we're okay
+				// or if we're going the wrong bug mode direction
+				// or something
+				// actually sometimes this doesn't help at all. =/
+				if (bugModeStartLocation.equals(rc.getLocation())) {
+					inBugMode = false;
+				}
 			}
 
 			if (!inBugMode) {
@@ -446,12 +458,28 @@ public abstract class BaseRobotHandler {
 					isGoingLeft = gen.nextBoolean();
 					Direction hqDir = rc.getLocation().directionTo(enemyHq);
 					lastWall = rc.getLocation().add(hqDir);
+					bugModeStartLocation = rc.getLocation();
+
+					bugModeLocationIterator = 0;
+					lastNBugModeLocations = new MapLocation[bugModeLocationsToStore];
 				}
 
 			}
 			if (inBugMode) {
 				// BUGMODE
 				lastRoundInBugMode = Clock.getRoundNum();
+
+				for (int i = 0; i < lastNBugModeLocations.length; i++) {
+					if(lastNBugModeLocations[i] == null){
+						break;
+					}
+					if (rc.getLocation().equals(lastNBugModeLocations[i])) {
+						inBugMode = false;
+						return false;
+					}
+				}
+				lastNBugModeLocations[bugModeLocationIterator++] = rc.getLocation();
+				bugModeLocationIterator %= bugModeLocationsToStore;
 
 				Direction facingDir = rc.getLocation().directionTo(lastWall);
 				// find a traversable tile
