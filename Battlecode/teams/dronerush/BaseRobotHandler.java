@@ -400,7 +400,7 @@ public abstract class BaseRobotHandler {
 					return true;
 				}
 				// bug navigation
-				if (bugNavigateToHq(traversableDirections)) {
+				if (bugNavigateToHq(traversableDirections, getTraversableDirectionsNearTower())) {
 					return true;
 				}
 
@@ -408,34 +408,50 @@ public abstract class BaseRobotHandler {
 			return false;
 		}
 
+		public Direction[] getTraversableDirectionsNearTower() {
+			// once we get to an enemy tower and can't get any closer (and we're in bug mode), it really doesn't make sense to path
+			// farther away
+			// to fix this, if ANY of the directions are near a tower, we ONLY return adjacent directions
+			boolean nearTower = false;
+			boolean[] isDirNearTower = new boolean[Direction.values().length];
+			for (Direction adjDir : Util.actualDirections) {
+				MapLocation adjLoc = rc.getLocation().add(adjDir);
+				if (rc.canMove(adjDir) && inEnemyHqOrTowerRange(adjLoc)) {
+					nearTower = true;
+					isDirNearTower[adjDir.ordinal()] = true;
+				}
+			}
+			if (!nearTower) {
+				return null;
+			}
+			Direction[] result = new Direction[8];
+			int size = 0;
+			for (Direction adjDir : Util.actualDirections) {
+				if (rc.canMove(adjDir)) {
+					// TODO: should we also avoid enemy units here? is that a good strategic decision?
+					if (nearTower) {
+						if ((isDirNearTower[adjDir.rotateLeft().ordinal()] || isDirNearTower[adjDir.rotateRight().ordinal()])
+								&& !isDirNearTower[adjDir.ordinal()]) {
+							result[size++] = adjDir;
+						}
+					} else {
+						result[size++] = adjDir;
+					}
+				}
+			}
+			return result;
+		}
+
 		public Direction[] getTraversableDirections() {
 			Direction[] result = new Direction[8];
 			int size = 0;
 
 			if (avoidEnemies) {
-				// once we get to an enemy tower and can't get any closer (and we're in bug mode), it really doesn't make sense to path
-				// farther away
-				// to fix this, if ANY of the directions are near a tower, we ONLY return adjacent directions
-				boolean nearTower = false;
-				boolean[] isDirNearTower = new boolean[Direction.values().length];
 				for (Direction adjDir : Util.actualDirections) {
 					MapLocation adjLoc = rc.getLocation().add(adjDir);
-					if (rc.canMove(adjDir) && inEnemyHqOrTowerRange(adjLoc)) {
-						nearTower = true;
-						isDirNearTower[adjDir.ordinal()] = true;
-					}
-				}
-				for (Direction adjDir : Util.actualDirections) {
-					if (rc.canMove(adjDir)) {
+					if (rc.canMove(adjDir) && !inEnemyHqOrTowerRange(adjLoc)) {
 						// TODO: should we also avoid enemy units here? is that a good strategic decision?
-						if (nearTower) {
-							if ((isDirNearTower[adjDir.rotateLeft().ordinal()] || isDirNearTower[adjDir.rotateRight().ordinal()])
-									&& !isDirNearTower[adjDir.ordinal()]) {
-								result[size++] = adjDir;
-							}
-						} else {
-							result[size++] = adjDir;
-						}
+						result[size++] = adjDir;
 					}
 				}
 			} else {
@@ -448,7 +464,8 @@ public abstract class BaseRobotHandler {
 			return result;
 		}
 
-		public boolean bugNavigateToHq(Direction[] traversableDirections) throws GameActionException {
+		public boolean bugNavigateToHq(Direction[] traversableDirections, Direction[] nearTowerTraversableDirections)
+				throws GameActionException {
 			// how does bug navigation work? first, you need a metric, like euclidian distance to hq.
 			// first, you follow the metric. however, if you get stuck, you enter bug mode. You also pick a direction ordering to
 			// follow, clockwise or counterclockwise.
@@ -467,6 +484,17 @@ public abstract class BaseRobotHandler {
 				if (enemyHq.distanceSquaredTo(rc.getLocation()) < distSqToHqAtBugModeStart) {
 					inBugMode = false;
 				}
+				if (nearTowerTraversableDirections != null) {
+					// if we're bugging near a tower, it's still sometimes okay to break away
+					for (int i = 0; i < traversableDirections.length && traversableDirections[i] != null; i++) {
+						Direction adjDir = traversableDirections[i];
+						if (enemyHq.distanceSquaredTo(rc.getLocation().add(adjDir)) < distSqToHqAtBugModeStart) {
+							inBugMode = false;
+							rc.move(adjDir);
+							return true;
+						}
+					}
+				}
 				// loop detection
 				// this is helpful if we were blocked by another bot when we entered bug mode, but now we're okay
 				// or if we're going the wrong bug mode direction
@@ -478,6 +506,10 @@ public abstract class BaseRobotHandler {
 			}
 
 			if (!inBugMode) {
+				if (nearTowerTraversableDirections != null) {
+					traversableDirections = nearTowerTraversableDirections;
+				}
+
 				int curDist = enemyHq.distanceSquaredTo(rc.getLocation());
 				int minDist = curDist;
 				Direction nextDir = null;
