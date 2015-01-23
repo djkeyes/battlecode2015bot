@@ -212,8 +212,7 @@ public abstract class BaseRobotHandler {
 		if (!hasTimeToTransferSupply()) {
 			return false;
 		}
-		RobotInfo[] nearbyAllies = rc.senseNearbyRobots(rc.getLocation(), GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED,
-				rc.getTeam());
+		RobotInfo[] nearbyAllies = rc.senseNearbyRobots(rc.getLocation(), GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED, rc.getTeam());
 		double lowestSupply;
 		if (rc.getType().isBuilding) {
 			lowestSupply = Double.MAX_VALUE;
@@ -688,9 +687,11 @@ public abstract class BaseRobotHandler {
 						numAbundant++;
 					}
 					if (rc.canMove(d)) {
-						if (adjOre > maxOre) {
-							moveDir = d;
-							maxOre = adjOre;
+						if (!inEnemyHqOrTowerRange(adjLoc)) {
+							if (adjOre > maxOre) {
+								moveDir = d;
+								maxOre = adjOre;
+							}
 						}
 					}
 				}
