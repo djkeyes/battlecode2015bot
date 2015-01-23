@@ -579,16 +579,13 @@ public abstract class BaseRobotHandler {
 	private int cacheTimeOurTowerLocations = -1;
 
 	public MapLocation getOurHqLocation() {
-		int roundNum = Clock.getRoundNum();
-		if (cacheTimeOurHqLocation == roundNum) {
+		if (cachedOurHqLocation != null) {
 			return cachedOurHqLocation;
 		}
-		cacheTimeOurHqLocation = roundNum;
 		return cachedOurHqLocation = rc.senseHQLocation();
 	}
 
 	private MapLocation cachedOurHqLocation = null;
-	private int cacheTimeOurHqLocation = -1;
 
 	public MapLocation[] getEnemyTowerLocations() {
 		int roundNum = Clock.getRoundNum();
