@@ -74,12 +74,28 @@ public class BeaverHandler extends BaseRobotHandler {
 			result.add(scout);
 			return result;
 		}
-
-		// if (gen.nextDouble() < 0.2) {
-		// result.add(buildHelipad);
-		// } else {
-		result.add(buildAerospaceLab);
-		// }
+		int numBarracks = BroadcastInterface.getRobotCount(rc, RobotType.BARRACKS);
+		if (numBarracks < 1) {
+			result.add(buildBarracks);
+			result.add(mine);
+			result.add(scout);
+			return result;
+		}
+		int numTankFactories = BroadcastInterface.getRobotCount(rc, RobotType.TANKFACTORY);
+		if (numTankFactories < 1) {
+			result.add(buildTankFactory);
+			result.add(mine);
+			result.add(scout);
+			return result;
+		}
+		if (numAerospacelabs < 3) {
+			result.add(buildAerospaceLab);
+			result.add(mine);
+			result.add(scout);
+			return result;
+		}
+		
+		result.add(buildTankFactory);
 		result.add(mine);
 		result.add(scout);
 		return result;

@@ -3,6 +3,7 @@ package dronerush;
 import java.util.LinkedList;
 import java.util.List;
 
+import battlecode.common.Clock;
 import battlecode.common.GameActionException;
 import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
@@ -92,20 +93,19 @@ public class HQHandler extends BaseBuildingHandler {
 				isHorizontalReflection, isDiagonalReflection, isReverseDiagonalReflection, isRotation));
 	}
 
-	private static final int DRONES_NEEDED_TO_CHARGE = 50;
-	private static final int DRONES_NEEDED_TO_RETREAT = 45;
 
 	private void determineAttackSignal() throws GameActionException {
-		boolean isSet = BroadcastInterface.readAttackMode(rc);
-		if (isSet) {
-			if (BroadcastInterface.getRobotCount(rc, RobotType.DRONE) <= DRONES_NEEDED_TO_RETREAT) {
-				BroadcastInterface.setAttackMode(rc, false);
-			}
-		} else {
-			if (BroadcastInterface.getRobotCount(rc, RobotType.DRONE) >= DRONES_NEEDED_TO_CHARGE) {
-				BroadcastInterface.setAttackMode(rc, true);
-			}
-		}
+		// boolean isSet = BroadcastInterface.readAttackMode(rc);
+		// if (isSet) {
+		// if (BroadcastInterface.getRobotCount(rc, RobotType.DRONE) <= DRONES_NEEDED_TO_RETREAT) {
+		// BroadcastInterface.setAttackMode(rc, false);
+		// }
+		// } else {
+		// if (BroadcastInterface.getRobotCount(rc, RobotType.DRONE) >= DRONES_NEEDED_TO_CHARGE) {
+		// BroadcastInterface.setAttackMode(rc, true);
+		// }
+		// }
+		BroadcastInterface.setAttackMode(rc, Clock.getRoundNum() > 1500);
 	}
 
 	// it turns out EnumMaps really suck. they cost like 5x more bytecodes.

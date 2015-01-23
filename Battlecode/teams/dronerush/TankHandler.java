@@ -16,17 +16,18 @@ public class TankHandler extends BaseRobotHandler {
 	public List<Action> chooseActions() throws GameActionException {
 		LinkedList<Action> result = new LinkedList<Action>();
 		result.add(attack);
-		// defending is weird. it doesn't make sense to stay in one place, but it doesn't make sense to move far away either. as a
-		// happy medium, do on a coin flip.
-		if (BroadcastInterface.readAttackMode(rc) || gen.nextDouble() < 0.5) {
-			result.add(scout);
+		
+		// until the attack bit is set, just hang around at home
+		if (BroadcastInterface.readAttackMode(rc)) {
+			result.add(advance);
 		} else {
+			// TODO: gather at some kind of central point
 			result.add(retreat);
 		}
 		return result;
 	}
 	
 	private final Action attack = new Attack();
-	private final Action scout = new ScoutOutward();
+	private final Action advance = new MoveTowardEnemyHq(false);
 	private final Action retreat = new Retreat();
 }

@@ -5,6 +5,7 @@ import java.util.List;
 
 import battlecode.common.GameActionException;
 import battlecode.common.RobotController;
+import battlecode.common.RobotType;
 
 public class TankFactoryHandler extends BaseBuildingHandler {
 
@@ -12,11 +13,13 @@ public class TankFactoryHandler extends BaseBuildingHandler {
 		super(rc);
 	}
 
-
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
 		LinkedList<Action> result = new LinkedList<Action>();
+		result.add(makeTank);
 		return result;
 	}
+
+	private final Action makeTank = new SpawnUnit(RobotType.TANK, true);
 
 }

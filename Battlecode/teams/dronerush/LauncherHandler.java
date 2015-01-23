@@ -65,8 +65,12 @@ public class LauncherHandler extends BaseBuildingHandler {
 		}
 
 		private boolean retreatAndStockUp() throws GameActionException {
-			// neat, I can nest actions. baller.
-			return retreat.run();
+			// don't retreat if we're advancing
+			if (!BroadcastInterface.readAttackMode(rc)) {
+				// neat, I can nest actions. baller.
+				return retreat.run();
+			}
+			return false;
 		}
 
 		private Direction findEnemyDirection() {
