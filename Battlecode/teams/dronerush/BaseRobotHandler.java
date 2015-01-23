@@ -309,26 +309,46 @@ public abstract class BaseRobotHandler {
 	}
 
 	// move this unit to an unexplored square
-	// this is implemented by simple moving further away from the HQ--however, this means it can get stuck in corners
+	// this is implemented by simple moving further away from the HQ--however, this means we can get stuck.
+	// to counteract this, we move randomly for a number of turns, but that's obvious sub-optimal
 	public class ScoutOutward implements Action {
+		private int turnsToRandomize = 0;
+		private final int turnsToRandomizeIncrement = 10;
+
 		@Override
 		public boolean run() throws GameActionException {
 			if (rc.isCoreReady()) {
-				int maxDist = 0;
-				Direction nextDir = null;
-				for (Direction adjDir : Util.getRandomDirectionOrdering(gen)) {
-					MapLocation adjLoc = rc.getLocation().add(adjDir);
-					if (rc.canMove(adjDir)) {
-						int adjDist = getDistanceFromOurHq(adjLoc);
-						if (adjDist > maxDist) {
-							maxDist = adjDist;
-							nextDir = adjDir;
+				if (turnsToRandomize > 0) {
+					Util.resetRandomDirectionOrdering(gen);
+					for (Direction adjDir : Util.getRandomDirectionOrdering(gen)) {
+						if (rc.canMove(adjDir)) {
+							rc.move(adjDir);
+							turnsToRandomize--;
+							return true;
 						}
 					}
-				}
-				if (nextDir != null) {
-					rc.move(nextDir);
-					return true;
+					turnsToRandomize--;
+					return false;
+				} else {
+					int maxDist = getDistanceFromOurHq(rc.getLocation());
+					Direction nextDir = null;
+					for (Direction adjDir : Util.getRandomDirectionOrdering(gen)) {
+						MapLocation adjLoc = rc.getLocation().add(adjDir);
+						if (rc.canMove(adjDir)) {
+							int adjDist = getDistanceFromOurHq(adjLoc);
+							if (adjDist > maxDist) {
+								maxDist = adjDist;
+								nextDir = adjDir;
+							}
+						}
+					}
+					if (nextDir != null) {
+						rc.move(nextDir);
+						return true;
+					} else {
+						turnsToRandomize += turnsToRandomizeIncrement;
+						return false;
+					}
 				}
 			}
 			return false;
