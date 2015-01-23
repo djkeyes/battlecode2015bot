@@ -54,7 +54,7 @@ public class DroneHandler extends BaseRobotHandler {
 
 	private final Action retreat = new MoveTo(getOurHqLocation(), /* avoidEnemies */true);
 
-	private final Action advanceAvoidingEnemies = new MoveTo(getEnemyHqLocation(), /* avoidEnemies */true);
+	private final Action advanceAvoidingEnemies = new MoveToWithBugging();// new MoveTo(getEnemyHqLocation(), /* avoidEnemies */true);
 
 	private final Action deliverSupplies = new DeliverSupplies();
 
@@ -76,6 +76,21 @@ public class DroneHandler extends BaseRobotHandler {
 			// this is pretty arbitary
 			int roundNum = Clock.getRoundNum();
 			return (roundNum - roundOfLastAttack < 50 || totalDamageDealt > 100);
+		}
+	}
+
+	// I don't want to re-write code, so this just re-uses what we did earlier
+	// drones' robotcontroller automagically allows them to path over VOID terrain
+	// all we need to do is tell this to never use BFS results, and we're golden.
+	private class MoveToWithBugging extends BaseRobotHandler.MoveTowardEnemyHq {
+
+		public MoveToWithBugging() {
+			super(true);
+		}
+
+		@Override
+		public boolean bfsToHq(Direction[] traversableDirections) throws GameActionException {
+			return false;
 		}
 	}
 

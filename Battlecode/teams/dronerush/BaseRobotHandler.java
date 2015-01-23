@@ -134,7 +134,7 @@ public abstract class BaseRobotHandler {
 	public abstract List<Action> chooseActions() throws GameActionException;
 
 	public void onExcessBytecodes() throws GameActionException {
-		 doPathfinding();
+		doPathfinding();
 	}
 
 	protected void doPathfinding() throws GameActionException {
