@@ -21,10 +21,10 @@ public class BeaverHandler extends BaseRobotHandler {
 		// so in general, that should be their priority
 		LinkedList<Action> result = new LinkedList<Action>();
 		result.add(attack);
-		
+
 		// some turn-based logic
 		int roundNum = Clock.getRoundNum();
-		if(roundNum >= 1875){
+		if (roundNum >= rc.getRoundLimit() - (RobotType.HANDWASHSTATION.buildTurns + 25)) {
 			// SUPERIOR SANITATION
 			result.add(buildHandwashStation);
 			result.add(mine);
