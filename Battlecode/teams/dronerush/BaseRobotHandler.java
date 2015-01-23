@@ -340,7 +340,8 @@ public abstract class BaseRobotHandler {
 
 		// bug mode state
 		private int distSqToHqAtBugModeStart;
-		boolean inBugMode = false;
+		private boolean inBugMode = false;
+		private int lastRoundInBugMode = -2;
 		private MapLocation lastWall;
 		private boolean isGoingLeft;
 
@@ -354,6 +355,17 @@ public abstract class BaseRobotHandler {
 			// our BFS is (almost) optimal. so if it has results, just use them
 			// if not though, we need a backup plan
 			// scouting outward is a shitty backup plan. Bug Navigation is where the money is.
+
+			if (inBugMode) {
+				// even if we have a delay cooldown, check to see if we're still in bug mode
+				// if another Action pre-empted us, then we should stop bugging
+				if (lastRoundInBugMode == Clock.getRoundNum() - 1) {
+					lastRoundInBugMode++;
+				} else {
+					inBugMode = false;
+				}
+			}
+
 			if (rc.isCoreReady()) {
 				// cache some things really quick to reduce computation
 				// this is a null-terminated list of traversable directions (sort of like a cstring)
@@ -439,6 +451,8 @@ public abstract class BaseRobotHandler {
 			}
 			if (inBugMode) {
 				// BUGMODE
+				lastRoundInBugMode = Clock.getRoundNum();
+
 				Direction facingDir = rc.getLocation().directionTo(lastWall);
 				// find a traversable tile
 				for (int i = 0; i < 8; i++) {
