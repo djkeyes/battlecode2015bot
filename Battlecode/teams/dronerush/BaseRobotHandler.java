@@ -600,14 +600,11 @@ public abstract class BaseRobotHandler {
 	private int cacheTimeEnemyTowerLocations = -1;
 
 	public MapLocation getEnemyHqLocation() {
-		int roundNum = Clock.getRoundNum();
-		if (cacheTimeEnemyHqLocation == roundNum) {
+		if (cachedEnemyHqLocation != null) {
 			return cachedEnemyHqLocation;
 		}
-		cacheTimeEnemyHqLocation = roundNum;
 		return cachedEnemyHqLocation = rc.senseEnemyHQLocation();
 	}
 
 	private MapLocation cachedEnemyHqLocation = null;
-	private int cacheTimeEnemyHqLocation = -1;
 }
