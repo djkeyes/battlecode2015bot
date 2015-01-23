@@ -3,7 +3,6 @@ package dronerush;
 import java.util.LinkedList;
 import java.util.List;
 
-import battlecode.common.Clock;
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.GameConstants;
@@ -71,6 +70,12 @@ public class LauncherHandler extends BaseBuildingHandler {
 		}
 
 		private Direction findEnemyDirection() {
+			boolean[] isDirLaunchable = new boolean[Direction.values().length];
+			for (Direction d : Util.actualDirections) {
+				if (rc.canLaunch(d)) {
+					isDirLaunchable[d.ordinal()] = true;
+				}
+			}
 			// find a desireable missile direction
 			int effectiveRange = GameConstants.MISSILE_LIFESPAN + 1; // or is this +2 due to splash?
 			RobotInfo[] nearby = rc.senseNearbyRobots(effectiveRange * effectiveRange, rc.getTeam().opponent());
@@ -80,7 +85,7 @@ public class LauncherHandler extends BaseBuildingHandler {
 				int distSq = enemy.location.distanceSquaredTo(rc.getLocation());
 				if (distSq <= minDistSq) {
 					for (Direction curDir : Util.getDirectionsStrictlyToward(rc.getLocation(), enemy.location)) {
-						if (rc.canLaunch(curDir)) {
+						if (isDirLaunchable[curDir.ordinal()]) {
 							minDistSq = distSq;
 							bestDir = curDir;
 							break;
@@ -118,22 +123,15 @@ public class LauncherHandler extends BaseBuildingHandler {
 
 		private boolean launchMissiles(Direction enemyDir) throws GameActionException {
 			if (rc.isCoreReady()) {
-				// int missilesLaunched = 0;
 				for (Direction curDir : Util.getDirectionsStrictlyToward(enemyDir)) {
 					if (rc.canLaunch(curDir)) {
 						rc.launchMissile(curDir);
-						// missilesLaunched++;
 					}
 				}
 				// launching missiles doesn't increment any delays, so we could retreat as soon as we launch
 				// that being said, missiles use nearby launcher positions to boostrap their targeting
 				// so stay in place
 				return true;
-				// if (originalMissileCount - missilesLaunched > 0) {
-				// return true; // if we still have missiles, we might as well stay here and launch more.
-				// } else {
-				// return false; // launching missiles doesn't increment any delays. baller.
-				// }
 			}
 			return false;
 		}

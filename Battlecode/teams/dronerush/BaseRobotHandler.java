@@ -182,7 +182,6 @@ public abstract class BaseRobotHandler {
 		if (hasUnknownTiles) {
 			BroadcastInterface.enqueuePathfindingQueue(rc, curLoc.x, curLoc.y);
 		}
-		// System.out.println("Bytcodes used for 1 update iteration: " + (Clock.getBytecodeNum() - startBytecodes));
 	}
 
 	public void onException(GameActionException ex) {
@@ -360,7 +359,6 @@ public abstract class BaseRobotHandler {
 				// this is a null-terminated list of traversable directions (sort of like a cstring)
 				Direction[] traversableDirections = getTraversableDirections();
 
-			
 				if (bfsToHq(traversableDirections)) {
 					inBugMode = false;
 					return true;
@@ -379,7 +377,8 @@ public abstract class BaseRobotHandler {
 			int size = 0;
 
 			for (Direction adjDir : Util.actualDirections) {
-				// TODO: once we get to an enemy tower and can't get any closer (and we're in bug mode), it really doesn't make sense to path farther away
+				// TODO: once we get to an enemy tower and can't get any closer (and we're in bug mode), it really doesn't make sense
+				// to path farther away
 				// so we should fix that somehow. like by changing bugging direction
 				if (rc.canMove(adjDir)) {
 					MapLocation adjLoc = rc.getLocation().add(adjDir);
@@ -473,6 +472,12 @@ public abstract class BaseRobotHandler {
 		}
 
 		public boolean bfsToHq(Direction[] traversableDirections) throws GameActionException {
+			// quick check: if we don't know the BFS to our current location, we *probably* don't know the adjacent ones
+			// this is sub-optimal, but saves us bytecodes
+			if (getDistanceFromEnemyHq(rc.getLocation()) == 0) {
+				return false;
+			}
+
 			int minDist = Integer.MAX_VALUE;
 			Direction nextDir = null;
 			for (int i = 0; i < traversableDirections.length && traversableDirections[i] != null; i++) {
@@ -499,6 +504,11 @@ public abstract class BaseRobotHandler {
 		@Override
 		public boolean run() throws GameActionException {
 			if (rc.isCoreReady()) {
+				// quick check: if we don't know the BFS to our current location, we *probably* don't know the adjacent ones
+				// this is sub-optimal, but saves us bytecodes
+				if (getDistanceFromOurHq(rc.getLocation()) == 0) {
+					return false;
+				}
 				int minDist = Integer.MAX_VALUE;
 				Direction nextDir = null;
 				for (Direction adjDir : Util.actualDirections) {
