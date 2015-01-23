@@ -141,9 +141,4 @@ public abstract class BaseBuildingHandler extends BaseRobotHandler {
 
 	}
 
-	@Override
-	public void onExcessBytecodes() {
-
-	}
-
 }
