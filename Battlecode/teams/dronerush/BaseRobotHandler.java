@@ -768,6 +768,7 @@ public abstract class BaseRobotHandler {
 		private MoveTo curAction;
 		private MapLocation[] possibleTargets;
 		private MoveTo[] possibleTargetActions;
+		private boolean isRespondingToDistressSignal = false;
 
 		public Defend() {
 			resetTargetActions();
@@ -802,14 +803,16 @@ public abstract class BaseRobotHandler {
 
 		@Override
 		public boolean run() throws GameActionException {
-			if (!isTravelingToTower) {
+			MapLocation towerInPeril = BroadcastInterface.getTowerInPeril(rc);
+
+			// if we've reached our location, OR if we're not going anywhere important and a tower is startled
+			if ((!isRespondingToDistressSignal && towerInPeril != null) || !isTravelingToTower) {
 				// first check if any towers are requesting help
 				// if not, just pick randomly from the current towers
-				MapLocation towerInPeril = BroadcastInterface.getTowerInPeril(rc);
 				if (towerInPeril != null) {
 					target = towerInPeril;
 					curAction = new MoveTo(towerInPeril, true, false);
-					System.out.println("detected a tower in distress!");
+					isRespondingToDistressSignal = true;
 				} else {
 					// first, check if we've lost a tower.
 					int numTowers = getOurTowerLocations().length;
@@ -820,9 +823,9 @@ public abstract class BaseRobotHandler {
 					int index = gen.nextInt(numTowers + 1);
 					target = possibleTargets[index];
 					curAction = possibleTargetActions[index];
+					isRespondingToDistressSignal = false;
 				}
 				isTravelingToTower = true;
-				System.out.println("traveling toward " + target);
 			}
 
 			boolean result = curAction.run();
@@ -833,7 +836,6 @@ public abstract class BaseRobotHandler {
 
 			return result;
 		}
-
 	}
 
 	// only beavers and miners can mine

@@ -33,6 +33,5 @@ public class TankHandler extends BaseRobotHandler {
 	private final Action attack = new AttackCautiously(/* retreatOnWeaponCooldown */true);
 	private final Action attackMaxDps = new AttackCautiously(false);
 	private final Action advance = new MoveTowardEnemyHq(false, false);
-	private final Action retreat = new Retreat();
 	private final Action defend = new Defend();
 }

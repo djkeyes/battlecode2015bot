@@ -30,7 +30,6 @@ public class BasherHandler extends BaseRobotHandler {
 
 	private final Action basherAttack = new BasherAttack();
 	private final Action advance = new MoveTowardEnemyHq(false, false);
-	private final Action retreat = new Retreat();
 	private final Action defend = new Defend();
 
 	public class BasherAttack implements Action {

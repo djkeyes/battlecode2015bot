@@ -88,8 +88,12 @@ public class BeaverHandler extends BaseRobotHandler {
 			result.add(scout);
 			return result;
 		}
-		
-		result.add(buildTankFactory);
+
+		if (Strategy.shouldMakeTanks(rc)) {
+			result.add(buildTankFactory);
+		} else {
+			result.add(buildAerospaceLab);
+		}
 		result.add(mine);
 		result.add(scout);
 		return result;
