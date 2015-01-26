@@ -21,7 +21,7 @@ public class MinerFactoryHandler extends BaseBuildingHandler {
 	private final double BUILD_MINER_MINIMUM_FEEDBACK_RATIO = 0.3;
 
 	private boolean shouldBuildMoreMiners() throws GameActionException {
-		int curMinerCount = BroadcastInterface.getRobotCount(rc, RobotType.MINER);
+		int curMinerCount = BroadcastInterface.getRobotCount(rc, RobotType.MINER, true);
 		if (curMinerCount < MINIMUM_MINER_COUNT) {
 			return true;
 		}

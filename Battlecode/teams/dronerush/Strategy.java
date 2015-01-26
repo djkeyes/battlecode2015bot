@@ -18,21 +18,21 @@ public class Strategy {
 	private static final double TANKS_PER_LAUNCHER = 1.5;
 
 	public static boolean shouldMakeTanks(RobotController rc) throws GameActionException {
-		int tankCount = BroadcastInterface.getRobotCount(rc, RobotType.TANK);
-		int launcherCount = BroadcastInterface.getRobotCount(rc, RobotType.LAUNCHER);
+		int tankCount = BroadcastInterface.getRobotCount(rc, RobotType.TANK, true);
+		int launcherCount = BroadcastInterface.getRobotCount(rc, RobotType.LAUNCHER, true);
 		// > vs >= doesn't really matter here. what matters is that AT LEAST one of shouldMakeTanks and shouldMakeLaunchers always
 		// returns true. so don't let both of them be >.
 		return tankCount <= TANKS_PER_LAUNCHER * launcherCount;
 	}
 
 	public static boolean shouldMakeLaunchers(RobotController rc) throws GameActionException {
-		int tankCount = BroadcastInterface.getRobotCount(rc, RobotType.TANK);
-		int launcherCount = BroadcastInterface.getRobotCount(rc, RobotType.LAUNCHER);
+		int tankCount = BroadcastInterface.getRobotCount(rc, RobotType.TANK, true);
+		int launcherCount = BroadcastInterface.getRobotCount(rc, RobotType.LAUNCHER, true);
 		return tankCount >= TANKS_PER_LAUNCHER * launcherCount;
 	}
 
 	public static boolean shouldMakeBashers(RobotController rc) throws GameActionException {
-		return (BroadcastInterface.getRobotCount(rc, RobotType.BASHER) < MAX_NUMBER_OF_BASHERS);
+		return (BroadcastInterface.getRobotCount(rc, RobotType.BASHER, true) < MAX_NUMBER_OF_BASHERS);
 	}
 
 }

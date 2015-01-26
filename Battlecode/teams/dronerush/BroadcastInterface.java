@@ -37,8 +37,10 @@ public class BroadcastInterface {
 	// 61637-64637: supply queue
 	// 64638: build more supply depots signal
 	// 64639: "pull the boys" and all attack signal
+	// 64640-64660: number of each enemy robot
 
 	// is there a better/more efficient way to do this? we could use an enummap, but i think that's less efficient.
+	// alternatively, I think type.ordinal() might be useful?
 	private static int getRobotIndex(RobotType type) {
 		switch (type) {
 		case AEROSPACELAB:
@@ -86,14 +88,22 @@ public class BroadcastInterface {
 		}
 		return -1;
 	}
+	
+	private static final int enemyTeamCountOffset = 64640;
 
-	public static int getRobotCount(RobotController rc, RobotType type) throws GameActionException {
+	public static int getRobotCount(RobotController rc, RobotType type, boolean isOurTeam) throws GameActionException {
 		int index = getRobotIndex(type);
+		if(!isOurTeam){
+			index += enemyTeamCountOffset;
+		}
 		return rc.readBroadcast(index);
 	}
 
-	public static void setRobotCount(RobotController rc, RobotType type, int count) throws GameActionException {
+	public static void setRobotCount(RobotController rc, RobotType type, int count, boolean isOurTeam) throws GameActionException {
 		int index = getRobotIndex(type);
+		if(!isOurTeam){
+			index += enemyTeamCountOffset;
+		}
 		if (rc.readBroadcast(index) != count)
 			rc.broadcast(index, count);
 	}

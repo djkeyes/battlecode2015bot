@@ -16,7 +16,7 @@ public class TrainingFieldHandler extends BaseBuildingHandler {
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
 		LinkedList<Action> result = new LinkedList<>();
-		if (BroadcastInterface.getRobotCount(rc, RobotType.COMMANDER) < 1) {
+		if (BroadcastInterface.getRobotCount(rc, RobotType.COMMANDER, true) < 1) {
 			result.add(makeCommander);
 		}
 		return result;

@@ -15,8 +15,8 @@ public class BarracksHandler extends BaseBuildingHandler {
 
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
-		int numTankFactories = BroadcastInterface.getRobotCount(rc, RobotType.TANKFACTORY);
-		int numTanks = BroadcastInterface.getRobotCount(rc, RobotType.TANK);
+		int numTankFactories = BroadcastInterface.getRobotCount(rc, RobotType.TANKFACTORY, true);
+		int numTanks = BroadcastInterface.getRobotCount(rc, RobotType.TANK, true);
 
 		LinkedList<Action> result = new LinkedList<Action>();
 		// bashers suck for early rush defense. their real purpose in life is dealing with clumps of launchers.

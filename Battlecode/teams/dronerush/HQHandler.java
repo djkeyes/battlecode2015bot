@@ -64,7 +64,7 @@ public class HQHandler extends BaseBuildingHandler {
 
 		LinkedList<Action> result = new LinkedList<Action>();
 		result.add(attack);
-		if (BroadcastInterface.getRobotCount(rc, RobotType.BEAVER) < 2) {
+		if (BroadcastInterface.getRobotCount(rc, RobotType.BEAVER, true) < 2) {
 			result.add(makeBeavers);
 		}
 		return result;
@@ -119,9 +119,9 @@ public class HQHandler extends BaseBuildingHandler {
 
 	private void determineAttackSignal() throws GameActionException {
 		boolean isSet = BroadcastInterface.readAttackMode(rc);
-		int tankCount = BroadcastInterface.getRobotCount(rc, RobotType.TANK);
-		int basherCount = BroadcastInterface.getRobotCount(rc, RobotType.BASHER);
-		int launcherCount = BroadcastInterface.getRobotCount(rc, RobotType.LAUNCHER);
+		int tankCount = BroadcastInterface.getRobotCount(rc, RobotType.TANK, true);
+		int basherCount = BroadcastInterface.getRobotCount(rc, RobotType.BASHER, true);
+		int launcherCount = BroadcastInterface.getRobotCount(rc, RobotType.LAUNCHER, true);
 		boolean isTimeToPullTheBoys = shouldPullTheBoys();
 		if (isSet) {
 			boolean shouldRetreat = (tankCount <= TANKS_NEEDED_TO_RETREAT) && (basherCount <= BASHERS_NEEDED_TO_RETREAT)
@@ -140,7 +140,8 @@ public class HQHandler extends BaseBuildingHandler {
 	}
 
 	// it turns out EnumMaps really suck. they cost like 5x more bytecodes.
-	private final int[] counts = new int[RobotType.values().length];
+	private final int[] allyCounts = new int[RobotType.values().length];
+	private final int[] enemyCounts = new int[RobotType.values().length];
 
 	// we need to factor in that robots will always use some extra bytecodes
 	// that being said, we won't supply *everyone*, just a fraction of our army
@@ -150,21 +151,28 @@ public class HQHandler extends BaseBuildingHandler {
 	public void countUnitsAndCheckSupply() throws GameActionException {
 		// the actual max map radius is like 120*120 + 100*100 or something. idk. but this is bigger, so it's okay.
 		int MAX_MAP_RADIUS = 100000000;
-		RobotInfo[] ourRobots = rc.senseNearbyRobots(MAX_MAP_RADIUS, rc.getTeam());
+		RobotInfo[] allRobots = rc.senseNearbyRobots(MAX_MAP_RADIUS);
 
-		for (int i = 0; i < counts.length; i++) {
-			counts[i] = 0;
+		for (int i = 0; i < allyCounts.length; i++) {
+			allyCounts[i] = 0;
+			enemyCounts[i] = 0;
 		}
-		for (RobotInfo robot : ourRobots) {
-			counts[robot.type.ordinal()]++;
+		for (RobotInfo robot : allRobots) {
+			if (robot.team == rc.getTeam()) {
+				allyCounts[robot.type.ordinal()]++;
+			} else {
+				enemyCounts[robot.type.ordinal()]++;
+			}
 		}
 		int supplyUpkeepNeeded = 0;
 		for (RobotType type : RobotType.values()) {
-			BroadcastInterface.setRobotCount(rc, type, counts[type.ordinal()]);
-			supplyUpkeepNeeded += counts[type.ordinal()] * type.supplyUpkeep;
+			BroadcastInterface.setRobotCount(rc, type, allyCounts[type.ordinal()], true);
+			supplyUpkeepNeeded += allyCounts[type.ordinal()] * type.supplyUpkeep;
+
+			BroadcastInterface.setRobotCount(rc, type, enemyCounts[type.ordinal()], false);
 		}
 		double currentSupplyOutput = GameConstants.SUPPLY_GEN_BASE
-				* (GameConstants.SUPPLY_GEN_MULTIPLIER + Math.pow(counts[RobotType.SUPPLYDEPOT.ordinal()],
+				* (GameConstants.SUPPLY_GEN_MULTIPLIER + Math.pow(allyCounts[RobotType.SUPPLYDEPOT.ordinal()],
 						GameConstants.SUPPLY_GEN_EXPONENT));
 		BroadcastInterface.setBuildMoreSupplyDepots(rc, currentSupplyOutput < supplyUpkeepNeeded * excessSupplyFactor
 				* fractionToKeepSupplied);
