@@ -34,8 +34,16 @@ public class CommanderHandler extends BaseRobotHandler {
 		if (rc.hasLearnedSkill(CommanderSkillType.HEAVY_HANDS)) {
 			result.add(useHeavyHands);
 		}
+
+		if (shouldPullTheBoys()) {
+			result.add(attack);
+			result.add(charge);
+			result.add(scout);
+			return result;
+		}
+
 		result.add(attack);
-		result.add(advance);
+		result.add(rush);
 		result.add(scout);
 		return result;
 	}
@@ -44,7 +52,8 @@ public class CommanderHandler extends BaseRobotHandler {
 	private final Action retreat = new Retreat();
 	private final Action retreatWithFlash = new RetreatWithFlash();
 	private final Action scout = new ScoutOutward();
-	private final Action advance = new MoveTowardEnemyHq(/* avoidEnemies= */true);
+	private final Action rush = new MoveTo(getEnemyHqLocation(), true, false);
+	private final Action charge = new MoveTowardEnemyHq(false, false);
 	private final Action useHeavyHands = new HeavyHands();
 
 	private class HeavyHands implements Action {

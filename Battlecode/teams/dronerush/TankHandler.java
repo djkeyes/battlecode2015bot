@@ -21,13 +21,13 @@ public class TankHandler extends BaseRobotHandler {
 		if (BroadcastInterface.readAttackMode(rc)) {
 			result.add(advance);
 		} else {
-			// TODO: gather at some kind of central point
-			result.add(retreat);
+			result.add(defend);
 		}
 		return result;
 	}
 	
 	private final Action attack = new Attack();
-	private final Action advance = new MoveTowardEnemyHq(false);
+	private final Action advance = new MoveTowardEnemyHq(false, false);
 	private final Action retreat = new Retreat();
+	private final Action defend = new Defend();
 }

@@ -28,7 +28,7 @@ public class DroneHandler extends BaseRobotHandler {
 		// otherwise, don't retreat unless we're not making progress
 		if (!isSupplyCourier) {
 			int roundNum = Clock.getRoundNum();
-			isSupplyCourier = (roundNum > 1000 || (roundNum > 500 && !attackWithStats.shouldContinueAttacking()));
+			isSupplyCourier = (roundNum > 1200 || (roundNum > 1000 && !attackWithStats.shouldContinueAttacking()));
 		}
 
 		if (isSupplyCourier) {
@@ -51,11 +51,9 @@ public class DroneHandler extends BaseRobotHandler {
 	}
 
 	private final AttackAndRecordStatistics attackWithStats = new AttackAndRecordStatistics();
-
-	private final Action retreat = new MoveTo(getOurHqLocation(), /* avoidEnemies */true);
-
-	private final Action advanceAvoidingEnemies = new MoveToWithBugging();// new MoveTo(getEnemyHqLocation(), /* avoidEnemies */true);
-
+	private final Action retreat = new MoveTo(getOurHqLocation(), /* avoidEnemies */true, /* avoidEnemiesAndTowers */true);
+	private final Action advanceAvoidingEnemies = new MoveTo(getEnemyHqLocation(), /* avoidEnemiesAndTowers */true, /* avoidEnemiesAndTowers */
+	true);
 	private final Action deliverSupplies = new DeliverSupplies();
 
 	private class AttackAndRecordStatistics extends Attack {
@@ -76,69 +74,6 @@ public class DroneHandler extends BaseRobotHandler {
 			// this is pretty arbitary
 			int roundNum = Clock.getRoundNum();
 			return (roundNum - roundOfLastAttack < 50 || totalDamageDealt > 100);
-		}
-	}
-
-	// I don't want to re-write code, so this just re-uses what we did earlier
-	// drones' robotcontroller automagically allows them to path over VOID terrain
-	// all we need to do is tell this to never use BFS results, and we're golden.
-	private class MoveToWithBugging extends BaseRobotHandler.MoveTowardEnemyHq {
-
-		public MoveToWithBugging() {
-			super(true);
-		}
-
-		@Override
-		public boolean bfsToHq(Direction[] traversableDirections) throws GameActionException {
-			return false;
-		}
-	}
-
-	// drones can fly over obstacles, so they don't need to rely on the BFS results
-	// therefore, we'll just use a simple movement implementation
-	private class MoveTo implements Action {
-		private MapLocation target;
-		private boolean avoidEnemies;
-
-		private RobotInfo[] enemyRobots = null;
-
-		public MoveTo(MapLocation target, boolean avoidEnemies) {
-			this.target = target;
-			this.avoidEnemies = avoidEnemies;
-		}
-
-		@Override
-		public boolean run() throws GameActionException {
-			if (avoidEnemies) {
-				// the robot with the longest range is the tower, with 24 range
-				// (sqrt(24)+1)^2 ~= 35
-				enemyRobots = rc.senseNearbyRobots(35, rc.getTeam().opponent());
-				// TODO: the next 2 methods cost 100 and 50 bytecodes respectively. we should cache them in the broadcast array.
-			}
-			if (rc.isCoreReady()) {
-				for (Direction d : Util.getDirectionsToward(rc.getLocation(), target)) {
-					if (rc.canMove(d)) {
-						if (avoidEnemies && isNearEnemy(rc.getLocation().add(d))) {
-							continue;
-						}
-						rc.move(d);
-						return true;
-					}
-				}
-			}
-			return false;
-		}
-
-		private boolean isNearEnemy(MapLocation nextLoc) {
-			// note: this method is temporally coupled to the enemyRobots, enemyTowers, and enemyHq variables.
-			// if they haven't been updated to reflect the current round, this method WILL return inaccurate results!
-			if (inRobotRange(nextLoc, enemyRobots)) {
-				return true;
-			}
-			if (inEnemyHqOrTowerRange(nextLoc)) {
-				return true;
-			}
-			return false;
 		}
 	}
 

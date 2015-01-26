@@ -23,14 +23,15 @@ public class BasherHandler extends BaseRobotHandler {
 			result.add(advance);
 		} else {
 			// TODO: gather at some kind of central point
-			result.add(retreat);
+			result.add(defend);
 		}
 		return result;
 	}
 
 	private final Action basherAttack = new BasherAttack();
-	private final Action advance = new MoveTowardEnemyHq(false);
+	private final Action advance = new MoveTowardEnemyHq(false, false);
 	private final Action retreat = new Retreat();
+	private final Action defend = new Defend();
 
 	public class BasherAttack implements Action {
 		private final int BASHER_ENEMY_SEARCH_RANGE_SQ = 9;

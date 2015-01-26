@@ -67,13 +67,6 @@ public class BeaverHandler extends BaseRobotHandler {
 			result.add(scout);
 			return result;
 		}
-		int numAerospacelabs = BroadcastInterface.getRobotCount(rc, RobotType.AEROSPACELAB);
-		if (numAerospacelabs < 1) {
-			result.add(buildAerospaceLab);
-			result.add(mine);
-			result.add(scout);
-			return result;
-		}
 		int numBarracks = BroadcastInterface.getRobotCount(rc, RobotType.BARRACKS);
 		if (numBarracks < 1) {
 			result.add(buildBarracks);
@@ -88,6 +81,7 @@ public class BeaverHandler extends BaseRobotHandler {
 			result.add(scout);
 			return result;
 		}
+		int numAerospacelabs = BroadcastInterface.getRobotCount(rc, RobotType.AEROSPACELAB);
 		if (numAerospacelabs < 3) {
 			result.add(buildAerospaceLab);
 			result.add(mine);

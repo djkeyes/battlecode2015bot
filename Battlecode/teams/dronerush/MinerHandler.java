@@ -17,7 +17,7 @@ public class MinerHandler extends BaseRobotHandler {
 	private final Action mine = new Mine(/* isBeaver= */false);
 	private final Action scout = new ScoutOutward();
 	private final Action attack = new Attack();
-	private final Action advance = new MoveTowardEnemyHq(false);
+	private final Action advance = new MoveTowardEnemyHq(false, false);
 
 	@Override
 	public List<Action> chooseActions() throws GameActionException {

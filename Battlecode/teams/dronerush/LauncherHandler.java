@@ -33,7 +33,7 @@ public class LauncherHandler extends BaseBuildingHandler {
 
 	private final Action missileAttack = new MissileAttack();
 	private final Action scout = new ScoutOutward();
-	private final Action advance = new MoveTowardEnemyHq(/* avoidEnemies= */true);
+	private final Action advance = new MoveTowardEnemyHq(/* avoidEnemies= */true, true);
 
 	private final class MissileAttack implements Action {
 		private Action retreat;

@@ -354,8 +354,16 @@ public abstract class BaseRobotHandler {
 		}
 	}
 
-	public class MoveTowardEnemyHq implements Action {
-		private boolean avoidEnemies;
+	public class MoveTo implements Action {
+		private boolean avoidTowers;
+		private boolean avoidEnemiesAndTowers;
+		private MapLocation target;
+
+		public MoveTo(MapLocation target, boolean avoidTowers, boolean avoidEnemiesAndTowers) {
+			this.target = target;
+			this.avoidTowers = avoidTowers;
+			this.avoidEnemiesAndTowers = avoidEnemiesAndTowers;
+		}
 
 		// bug mode state
 		private int distSqToHqAtBugModeStart;
@@ -368,20 +376,12 @@ public abstract class BaseRobotHandler {
 		private int bugModeLocationIterator = 0;
 		private boolean isGoingLeft;
 
-		public MoveTowardEnemyHq(boolean avoidEnemies) {
-			this.avoidEnemies = avoidEnemies;
-		}
-
 		@Override
 		public boolean run() throws GameActionException {
-			// okay, here's the plan:
-			// our BFS is (almost) optimal. so if it has results, just use them
-			// if not though, we need a backup plan
-			// scouting outward is a shitty backup plan. Bug Navigation is where the money is.
 
 			if (inBugMode) {
 				// even if we have a delay cooldown, check to see if we're still in bug mode
-				// if another Action pre-empted us, then we should stop bugging
+				// if another Action pre-empted us (and so we skipped a round) then we should stop bugging
 				if (lastRoundInBugMode == Clock.getRoundNum() - 1) {
 					lastRoundInBugMode++;
 				} else {
@@ -390,81 +390,14 @@ public abstract class BaseRobotHandler {
 			}
 
 			if (rc.isCoreReady()) {
-				// cache some things really quick to reduce computation
-				// this is a null-terminated list of traversable directions (sort of like a cstring)
-				Direction[] traversableDirections = getTraversableDirections();
-
-				if (bfsToHq(traversableDirections)) {
-					inBugMode = false;
-					return true;
-				}
 				// bug navigation
-				if (bugNavigateToHq(traversableDirections, getTraversableDirectionsNearTower())) {
-					return true;
-				}
-
+				return bugNavigate();
 			}
+
 			return false;
 		}
 
-		public Direction[] getTraversableDirectionsNearTower() {
-			// once we get to an enemy tower and can't get any closer (and we're in bug mode), it really doesn't make sense to path
-			// farther away
-			// to fix this, if ANY of the directions are near a tower, we ONLY return adjacent directions
-			boolean nearTower = false;
-			boolean[] isDirNearTower = new boolean[Direction.values().length];
-			for (Direction adjDir : Util.actualDirections) {
-				MapLocation adjLoc = rc.getLocation().add(adjDir);
-				if (rc.canMove(adjDir) && inEnemyHqOrTowerRange(adjLoc)) {
-					nearTower = true;
-					isDirNearTower[adjDir.ordinal()] = true;
-				}
-			}
-			if (!nearTower) {
-				return null;
-			}
-			Direction[] result = new Direction[8];
-			int size = 0;
-			for (Direction adjDir : Util.actualDirections) {
-				if (rc.canMove(adjDir)) {
-					// TODO: should we also avoid enemy units here? is that a good strategic decision?
-					if (nearTower) {
-						if ((isDirNearTower[adjDir.rotateLeft().ordinal()] || isDirNearTower[adjDir.rotateRight().ordinal()])
-								&& !isDirNearTower[adjDir.ordinal()]) {
-							result[size++] = adjDir;
-						}
-					} else {
-						result[size++] = adjDir;
-					}
-				}
-			}
-			return result;
-		}
-
-		public Direction[] getTraversableDirections() {
-			Direction[] result = new Direction[8];
-			int size = 0;
-
-			if (avoidEnemies) {
-				for (Direction adjDir : Util.actualDirections) {
-					MapLocation adjLoc = rc.getLocation().add(adjDir);
-					if (rc.canMove(adjDir) && !inEnemyHqOrTowerRange(adjLoc)) {
-						// TODO: should we also avoid enemy units here? is that a good strategic decision?
-						result[size++] = adjDir;
-					}
-				}
-			} else {
-				for (Direction adjDir : Util.actualDirections) {
-					if (rc.canMove(adjDir)) {
-						result[size++] = adjDir;
-					}
-				}
-			}
-			return result;
-		}
-
-		public boolean bugNavigateToHq(Direction[] traversableDirections, Direction[] nearTowerTraversableDirections)
-				throws GameActionException {
+		public boolean bugNavigate() throws GameActionException {
 			// how does bug navigation work? first, you need a metric, like euclidian distance to hq.
 			// first, you follow the metric. however, if you get stuck, you enter bug mode. You also pick a direction ordering to
 			// follow, clockwise or counterclockwise.
@@ -477,24 +410,13 @@ public abstract class BaseRobotHandler {
 			// 4b. (alternatively, if you have a BFS distance, leave bug mode. but this is handled trivially, you'll see.)
 			// 5. otherwise, go to step 2.
 
-			MapLocation enemyHq = getEnemyHqLocation();
+			Direction[] traversableDirections = getTraversableDirections(avoidTowers, avoidEnemiesAndTowers);
 
 			if (inBugMode) {
-				if (enemyHq.distanceSquaredTo(rc.getLocation()) < distSqToHqAtBugModeStart) {
+				if (target.distanceSquaredTo(rc.getLocation()) < distSqToHqAtBugModeStart) {
 					inBugMode = false;
 				}
-				if (nearTowerTraversableDirections != null) {
-					// if we're bugging near a tower, it's still sometimes okay to break away
-					for (int i = 0; i < traversableDirections.length && traversableDirections[i] != null; i++) {
-						Direction adjDir = traversableDirections[i];
-						if (enemyHq.distanceSquaredTo(rc.getLocation().add(adjDir)) < distSqToHqAtBugModeStart) {
-							inBugMode = false;
-							rc.move(adjDir);
-							return true;
-						}
-					}
-				}
-				// loop detection
+				// cycle detection
 				// this is helpful if we were blocked by another bot when we entered bug mode, but now we're okay
 				// or if we're going the wrong bug mode direction
 				// or something
@@ -505,17 +427,13 @@ public abstract class BaseRobotHandler {
 			}
 
 			if (!inBugMode) {
-				if (nearTowerTraversableDirections != null) {
-					traversableDirections = nearTowerTraversableDirections;
-				}
-
-				int curDist = enemyHq.distanceSquaredTo(rc.getLocation());
+				int curDist = target.distanceSquaredTo(rc.getLocation());
 				int minDist = curDist;
 				Direction nextDir = null;
 				for (int i = 0; i < traversableDirections.length && traversableDirections[i] != null; i++) {
 					Direction adjDir = traversableDirections[i];
 					MapLocation adjLoc = rc.getLocation().add(adjDir);
-					int adjDist = enemyHq.distanceSquaredTo(adjLoc);
+					int adjDist = target.distanceSquaredTo(adjLoc);
 					if (adjDist < minDist) {
 						minDist = adjDist;
 						nextDir = adjDir;
@@ -528,7 +446,7 @@ public abstract class BaseRobotHandler {
 					inBugMode = true;
 					distSqToHqAtBugModeStart = curDist;
 					isGoingLeft = gen.nextBoolean();
-					Direction hqDir = rc.getLocation().directionTo(enemyHq);
+					Direction hqDir = rc.getLocation().directionTo(target);
 					lastWall = rc.getLocation().add(hqDir);
 					bugModeStartLocation = rc.getLocation();
 
@@ -539,8 +457,8 @@ public abstract class BaseRobotHandler {
 			}
 			if (inBugMode) {
 				// BUGMODE
-				lastRoundInBugMode = Clock.getRoundNum();
 
+				// more cycle detection
 				for (int i = 0; i < lastNBugModeLocations.length; i++) {
 					if (lastNBugModeLocations[i] == null) {
 						break;
@@ -552,6 +470,34 @@ public abstract class BaseRobotHandler {
 				}
 				lastNBugModeLocations[bugModeLocationIterator++] = rc.getLocation();
 				bugModeLocationIterator %= bugModeLocationsToStore;
+
+				// if we're near a tower or enemy, it sometimes makes sense to just skirt back and forth around them,
+				// rather than backtracking along other obstacles
+				if (avoidEnemiesAndTowers || avoidTowers) {
+					Direction[] nearEnemyTraversableDirections;
+					boolean nearEnemy = false;
+					boolean[] isDirNearEnemy = getIsDirNearTower(avoidEnemiesAndTowers);
+					for (boolean b : isDirNearEnemy) {
+						if (b) {
+							nearEnemy = true;
+							break;
+						}
+					}
+					if (nearEnemy) {
+						nearEnemyTraversableDirections = new Direction[8];
+						int size = 0;
+						for (int i = 0; i < traversableDirections.length && traversableDirections[i] != null; i++) {
+							Direction adjDir = traversableDirections[i];
+							if ((isDirNearEnemy[adjDir.rotateLeft().ordinal()] || isDirNearEnemy[adjDir.rotateRight().ordinal()])
+									&& !isDirNearEnemy[adjDir.ordinal()]) {
+								nearEnemyTraversableDirections[size++] = adjDir;
+							}
+						}
+						traversableDirections = nearEnemyTraversableDirections;
+					}
+				}
+
+				lastRoundInBugMode = Clock.getRoundNum();
 
 				Direction facingDir = rc.getLocation().directionTo(lastWall);
 				// find a traversable tile
@@ -585,12 +531,44 @@ public abstract class BaseRobotHandler {
 			return false;
 		}
 
-		public boolean bfsToHq(Direction[] traversableDirections) throws GameActionException {
+	}
+
+	public class MoveTowardEnemyHq implements Action {
+		private boolean avoidTowers;
+		private boolean avoidEnemiesAndTowers;
+
+		private Action bugNavigateToEnemyHq;
+
+		public MoveTowardEnemyHq(boolean avoidTowers, boolean avoidEnemiesAndTowers) {
+			this.avoidTowers = avoidTowers;
+			this.avoidEnemiesAndTowers = avoidEnemiesAndTowers;
+			this.bugNavigateToEnemyHq = new MoveTo(getEnemyHqLocation(), avoidTowers, avoidEnemiesAndTowers);
+		}
+
+		@Override
+		public boolean run() throws GameActionException {
+			// okay, here's the plan:
+			// our BFS is (almost) optimal. so if it has results, just use them
+			// if not though, we need a backup plan
+			// scouting outward is a shitty backup plan. Bug Navigation is where the money is.
+
+			if (rc.isCoreReady()) {
+				if (bfsToHq()) {
+					return true;
+				}
+			}
+
+			return bugNavigateToEnemyHq.run();
+		}
+
+		public boolean bfsToHq() throws GameActionException {
 			// quick check: if we don't know the BFS to our current location, we *probably* don't know the adjacent ones
 			// this is sub-optimal, but saves us bytecodes
 			if (getDistanceFromEnemyHq(rc.getLocation()) == 0) {
 				return false;
 			}
+
+			Direction[] traversableDirections = getTraversableDirections(avoidTowers, avoidEnemiesAndTowers);
 
 			int minDist = Integer.MAX_VALUE;
 			Direction nextDir = null;
@@ -611,6 +589,110 @@ public abstract class BaseRobotHandler {
 			return false;
 		}
 	}
+
+	private boolean[] getIsDirNearTower(boolean alsoAvoidEnemies) {
+		int roundNum = Clock.getRoundNum();
+		if (alsoAvoidEnemies) {
+			if (cacheTimeIsDirNearEnemyOrTower == roundNum) {
+				return cachedIsDirNearEnemyOrTower;
+			}
+
+			RobotInfo[] nearbyEnemies = getNearbyEnemies();
+
+			cachedIsDirNearEnemyOrTower = new boolean[Direction.values().length];
+			for (Direction adjDir : Util.actualDirections) {
+				MapLocation adjLoc = rc.getLocation().add(adjDir);
+				if (rc.canMove(adjDir)) {
+					if (inEnemyHqOrTowerRange(adjLoc) || inEnemyRange(adjLoc, nearbyEnemies)) {
+						cachedIsDirNearEnemyOrTower[adjDir.ordinal()] = true;
+					}
+				}
+			}
+
+			cacheTimeIsDirNearEnemyOrTower = roundNum;
+			return cachedIsDirNearEnemyOrTower;
+		} else {
+			if (cacheTimeIsDirNearTower == roundNum) {
+				return cachedIsDirNearTower;
+			}
+
+			RobotInfo[] nearbyEnemies = getNearbyEnemies();
+
+			cachedIsDirNearTower = new boolean[Direction.values().length];
+			for (Direction adjDir : Util.actualDirections) {
+				MapLocation adjLoc = rc.getLocation().add(adjDir);
+				if (rc.canMove(adjDir)) {
+					if (inEnemyHqOrTowerRange(adjLoc) || inEnemyRange(adjLoc, nearbyEnemies)) {
+						cachedIsDirNearTower[adjDir.ordinal()] = true;
+					}
+				}
+			}
+
+			cacheTimeIsDirNearTower = roundNum;
+			return cachedIsDirNearTower;
+		}
+	}
+
+	private int cacheTimeIsDirNearEnemyOrTower;
+	private boolean[] cachedIsDirNearEnemyOrTower;
+
+	private int cacheTimeIsDirNearTower;
+	private boolean[] cachedIsDirNearTower;
+
+	// a round-based cache of some things relevant to pathing
+	// this is a null-terminated list of traversable directions (sort of like a cstring)
+	public Direction[] getTraversableDirections(boolean avoidTowers, boolean avoidEnemiesAndTowers) {
+		int roundNum = Clock.getRoundNum();
+		if (avoidEnemiesAndTowers) {
+			if (cacheTimeTraversableDirectionsEAndT == roundNum) {
+				return cachedTraversableDirectionsEAndT;
+			}
+		} else if (avoidTowers) {
+			if (cacheTimeTraversableDirectionsT == roundNum) {
+				return cachedTraversableDirectionsT;
+			}
+		} else {
+			if (cacheTimeTraversableDirections == roundNum) {
+				return cachedTraversableDirections;
+			}
+		}
+
+		Direction[] result = new Direction[8];
+		int size = 0;
+
+		if (avoidTowers) {
+			boolean[] isNearEnemy = getIsDirNearTower(avoidEnemiesAndTowers);
+			for (Direction adjDir : Util.actualDirections) {
+				if (rc.canMove(adjDir) && !isNearEnemy[adjDir.ordinal()]) {
+					result[size++] = adjDir;
+				}
+			}
+		} else {
+			for (Direction adjDir : Util.actualDirections) {
+				if (rc.canMove(adjDir)) {
+					result[size++] = adjDir;
+				}
+			}
+		}
+
+		if (avoidEnemiesAndTowers) {
+			cacheTimeTraversableDirectionsEAndT = roundNum;
+			return cachedTraversableDirectionsEAndT = result;
+		} else if (avoidTowers) {
+			cacheTimeTraversableDirectionsT = roundNum;
+			return cachedTraversableDirectionsT = result;
+		} else {
+			cacheTimeTraversableDirections = roundNum;
+			return cachedTraversableDirections = result;
+		}
+	}
+
+	private Direction[] cachedTraversableDirections = null;
+	private int cacheTimeTraversableDirections = -1;
+	private Direction[] cachedTraversableDirectionsT = null;
+	private int cacheTimeTraversableDirectionsT = -1;
+	private Direction[] cachedTraversableDirectionsEAndT = null;
+	private int cacheTimeTraversableDirectionsEAndT = -1;
 
 	// opposite of scouting outward. try to move back toward hq.
 	public class Retreat implements Action {
@@ -642,6 +724,73 @@ public abstract class BaseRobotHandler {
 			}
 			return false;
 		}
+	}
+
+	// this "defends" by randomly traveling between our towers
+	// TODO: also defend our miners and production buildings, or gather near where enemies are
+	public class Defend implements Action {
+
+		private boolean isTravelingToTower = false;
+		private MapLocation target;
+		private MoveTo curAction;
+		private MapLocation[] possibleTargets;
+		private MoveTo[] possibleTargetActions;
+
+		public Defend() {
+			resetTargetActions();
+
+			// this should never change
+			possibleTargets[0] = getOurHqLocation();
+			// TODO: this should really be a retreat action, using BFS results
+			possibleTargetActions[0] = new MoveTo(possibleTargets[0], true, false);
+		}
+
+		private void resetTargetActions() {
+			MapLocation[] towers = getOurTowerLocations();
+			// we can re-use the hq stuff
+			MapLocation hq = null;
+			MoveTo hqAction = null;
+			if (possibleTargetActions != null) {
+				hq = possibleTargets[0];
+				hqAction = possibleTargetActions[0];
+			}
+
+			possibleTargets = new MapLocation[1 + towers.length];
+			possibleTargetActions = new MoveTo[1 + towers.length];
+
+			possibleTargets[0] = hq;
+			possibleTargetActions[0] = hqAction;
+
+			for (int i = 0; i < towers.length; i++) {
+				possibleTargets[i + 1] = towers[i];
+				possibleTargetActions[i + 1] = new MoveTo(possibleTargets[i + 1], true, false);
+			}
+		}
+
+		@Override
+		public boolean run() throws GameActionException {
+			if (!isTravelingToTower) {
+				// first, check if we've lost a tower.
+				int numTowers = getOurTowerLocations().length;
+				if (possibleTargetActions.length != numTowers + 1) {
+					resetTargetActions();
+				}
+				// pick a target
+				int index = gen.nextInt(numTowers + 1);
+				target = possibleTargets[index];
+				curAction = possibleTargetActions[index];
+				isTravelingToTower = true;
+			}
+
+			boolean result = curAction.run();
+
+			if (rc.getLocation().distanceSquaredTo(target) <= 9) {
+				isTravelingToTower = false;
+			}
+
+			return result;
+		}
+
 	}
 
 	// only beavers and miners can mine
@@ -755,6 +904,37 @@ public abstract class BaseRobotHandler {
 		}
 		return false;
 	}
+
+	public boolean inEnemyRange(MapLocation loc, RobotInfo[] nearbyEnemies) {
+		for (RobotInfo enemy : nearbyEnemies) {
+			if (enemy.type == RobotType.BEAVER || enemy.type == RobotType.MINER) {
+				continue;
+			}
+			if (loc.distanceSquaredTo(enemy.location) <= enemy.type.attackRadiusSquared) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public RobotInfo[] getNearbyEnemies() {
+		int roundNum = Clock.getRoundNum();
+		if (cacheTimeNearbyEnemies == roundNum) {
+			return cachedNearbyEnemies;
+		}
+
+		// the longest ranged unit (excluding the launcher) is the tank, with square range 15
+		// most people who call this method are worried about pathfinding, so if we take 1 step from the current position,
+		// we will be concerned with tanks within range 25, at most
+		// (tanks can hit an offset (2, 3) away, which means if we move one tile, they can hit an offset (3, 4) away).
+		int searchRangeSq = 25;
+		cacheTimeNearbyEnemies = roundNum;
+		return cachedNearbyEnemies = rc.senseNearbyRobots(searchRangeSq, rc.getTeam().opponent());
+
+	}
+
+	private RobotInfo[] cachedNearbyEnemies = null;
+	private int cacheTimeNearbyEnemies = -1;
 
 	public int getDistanceFromOurHq(MapLocation target) throws GameActionException {
 		return BroadcastInterface.readDistance(rc, target.x, target.y, getOurHqLocation());
