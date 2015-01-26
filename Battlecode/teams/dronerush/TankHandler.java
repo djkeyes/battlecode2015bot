@@ -16,7 +16,7 @@ public class TankHandler extends BaseRobotHandler {
 	public List<Action> chooseActions() throws GameActionException {
 		LinkedList<Action> result = new LinkedList<Action>();
 		result.add(attack);
-		
+
 		// until the attack bit is set, just hang around at home
 		if (BroadcastInterface.readAttackMode(rc)) {
 			result.add(advance);
@@ -25,8 +25,11 @@ public class TankHandler extends BaseRobotHandler {
 		}
 		return result;
 	}
-	
-	private final Action attack = new Attack();
+
+	// TODO: tanks have a large loading delay, so retreating would make them attack even more slowly. maybe they shouldn't retreat
+	// during weapon cooldown
+	// that being said, they outrange most things, so staying out of enemy range is kind of important.
+	private final Action attack = new AttackCautiously(/* retreatOnWeaponCooldown */true);
 	private final Action advance = new MoveTowardEnemyHq(false, false);
 	private final Action retreat = new Retreat();
 	private final Action defend = new Defend();

@@ -212,7 +212,8 @@ public abstract class BaseRobotHandler {
 		if (!hasTimeToTransferSupply()) {
 			return false;
 		}
-		RobotInfo[] nearbyAllies = rc.senseNearbyRobots(rc.getLocation(), GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED, rc.getTeam());
+		RobotInfo[] nearbyAllies = rc.senseNearbyRobots(rc.getLocation(), GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED,
+				rc.getTeam());
 		double lowestSupply;
 		if (rc.getType().isBuilding) {
 			lowestSupply = Double.MAX_VALUE;
@@ -305,6 +306,34 @@ public abstract class BaseRobotHandler {
 			}
 			return false;
 		}
+	}
+
+	// attacks, but retreats during cooldowns
+	public class AttackCautiously extends Attack {
+		private Action attack = new Attack();
+
+		private boolean retreatOnWeaponCooldown;
+		private Action retreat;
+
+		public AttackCautiously(boolean retreatOnWeaponCooldown) {
+			this.retreatOnWeaponCooldown = retreatOnWeaponCooldown;
+			if (retreatOnWeaponCooldown) {
+				retreat = new Retreat();
+			}
+		}
+
+		@Override
+		public boolean run() throws GameActionException {
+			if (rc.getWeaponDelay() > rc.getType().cooldownDelay / 2) {
+				if (retreatOnWeaponCooldown) {
+					return retreat.run();
+				} else {
+					return true;
+				}
+			}
+			return attack.run();
+		}
+
 	}
 
 	// move this unit to an unexplored square
