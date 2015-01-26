@@ -801,9 +801,6 @@ public abstract class BaseRobotHandler {
 			}
 		}
 
-		private final int HUG_DISTANCE = 2;
-		private final int PERSONAL_SPACE_DISTANCE = 9;
-
 		@Override
 		public boolean run() throws GameActionException {
 			MapLocation towerInPeril = BroadcastInterface.getTowerInPeril(rc);
@@ -833,14 +830,7 @@ public abstract class BaseRobotHandler {
 
 			boolean result = curAction.run();
 
-			int threshholdDist;
-			// if we're responding to a distress call, make sure to give the tower a reassuring hug
-			if (isRespondingToDistressSignal) {
-				threshholdDist = HUG_DISTANCE;
-			} else {
-				threshholdDist = PERSONAL_SPACE_DISTANCE;
-			}
-			if (rc.getLocation().distanceSquaredTo(target) <= threshholdDist) {
+			if (rc.getLocation().distanceSquaredTo(target) <= 8) {
 				isTravelingToTower = false;
 			}
 
