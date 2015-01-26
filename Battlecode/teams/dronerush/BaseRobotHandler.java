@@ -324,10 +324,12 @@ public abstract class BaseRobotHandler {
 
 		@Override
 		public boolean run() throws GameActionException {
-			if (rc.getWeaponDelay() > rc.getType().cooldownDelay / 2) {
-				if (retreatOnWeaponCooldown) {
+			if (retreatOnWeaponCooldown) {
+				if (rc.getWeaponDelay() > rc.getType().cooldownDelay / 2) {
 					return retreat.run();
-				} else {
+				}
+			} else {
+				if (rc.getWeaponDelay() > 0) {
 					return true;
 				}
 			}

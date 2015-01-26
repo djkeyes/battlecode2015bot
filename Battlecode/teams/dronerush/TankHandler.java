@@ -15,12 +15,13 @@ public class TankHandler extends BaseRobotHandler {
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
 		LinkedList<Action> result = new LinkedList<Action>();
-		result.add(attack);
 
 		// until the attack bit is set, just hang around at home
 		if (BroadcastInterface.readAttackMode(rc)) {
+			result.add(attackMaxDps);
 			result.add(advance);
 		} else {
+			result.add(attack);
 			result.add(defend);
 		}
 		return result;
@@ -30,6 +31,7 @@ public class TankHandler extends BaseRobotHandler {
 	// during weapon cooldown
 	// that being said, they outrange most things, so staying out of enemy range is kind of important.
 	private final Action attack = new AttackCautiously(/* retreatOnWeaponCooldown */true);
+	private final Action attackMaxDps = new AttackCautiously(false);
 	private final Action advance = new MoveTowardEnemyHq(false, false);
 	private final Action retreat = new Retreat();
 	private final Action defend = new Defend();
