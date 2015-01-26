@@ -212,8 +212,7 @@ public abstract class BaseRobotHandler {
 		if (!hasTimeToTransferSupply()) {
 			return false;
 		}
-		RobotInfo[] nearbyAllies = rc.senseNearbyRobots(rc.getLocation(), GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED,
-				rc.getTeam());
+		RobotInfo[] nearbyAllies = rc.senseNearbyRobots(rc.getLocation(), GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED, rc.getTeam());
 		double lowestSupply;
 		if (rc.getType().isBuilding) {
 			lowestSupply = Double.MAX_VALUE;
@@ -288,8 +287,7 @@ public abstract class BaseRobotHandler {
 			// TODO figure out a good way to determine targets
 			// this picks the weakest one, but we might also want to kill specific types (commanders? beavers?) or use other criteria
 			// (can my allies and I 1-shot it?)
-			RobotInfo[] nearbyEnemies = rc.senseNearbyRobots(rc.getLocation(), rc.getType().attackRadiusSquared, rc.getTeam()
-					.opponent());
+			RobotInfo[] nearbyEnemies = senseNearbyEnemies();
 			if (nearbyEnemies.length > 0) {
 				MapLocation enemyLoc = nearbyEnemies[0].location;
 				double minHealth = nearbyEnemies[0].health;
@@ -305,6 +303,10 @@ public abstract class BaseRobotHandler {
 				}
 			}
 			return false;
+		}
+
+		public RobotInfo[] senseNearbyEnemies() throws GameActionException {
+			return rc.senseNearbyRobots(rc.getLocation(), rc.getType().attackRadiusSquared, rc.getTeam().opponent());
 		}
 	}
 
@@ -801,16 +803,26 @@ public abstract class BaseRobotHandler {
 		@Override
 		public boolean run() throws GameActionException {
 			if (!isTravelingToTower) {
-				// first, check if we've lost a tower.
-				int numTowers = getOurTowerLocations().length;
-				if (possibleTargetActions.length != numTowers + 1) {
-					resetTargetActions();
+				// first check if any towers are requesting help
+				// if not, just pick randomly from the current towers
+				MapLocation towerInPeril = BroadcastInterface.getTowerInPeril(rc);
+				if (towerInPeril != null) {
+					target = towerInPeril;
+					curAction = new MoveTo(towerInPeril, true, false);
+					System.out.println("detected a tower in distress!");
+				} else {
+					// first, check if we've lost a tower.
+					int numTowers = getOurTowerLocations().length;
+					if (possibleTargetActions.length != numTowers + 1) {
+						resetTargetActions();
+					}
+					// pick a target
+					int index = gen.nextInt(numTowers + 1);
+					target = possibleTargets[index];
+					curAction = possibleTargetActions[index];
 				}
-				// pick a target
-				int index = gen.nextInt(numTowers + 1);
-				target = possibleTargets[index];
-				curAction = possibleTargetActions[index];
 				isTravelingToTower = true;
+				System.out.println("traveling toward " + target);
 			}
 
 			boolean result = curAction.run();

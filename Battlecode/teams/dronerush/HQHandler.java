@@ -36,6 +36,8 @@ public class HQHandler extends BaseBuildingHandler {
 		determineShouldPullTheBoys();
 
 		BroadcastInterface.resetAbundantOre(rc);
+		
+		BroadcastInterface.resetTowerInPeril(rc);
 	}
 
 	private void determineShouldPullTheBoys() throws GameActionException {

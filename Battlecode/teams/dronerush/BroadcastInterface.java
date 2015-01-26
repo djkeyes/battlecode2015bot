@@ -38,6 +38,9 @@ public class BroadcastInterface {
 	// 64638: build more supply depots signal
 	// 64639: "pull the boys" and all attack signal
 	// 64640-64660: number of each enemy robot
+	// 64661: a boolean, whether there is a tower in peril
+	// 64662: coordinates of a tower in peril, if it exists
+	// 64663: number of enemies near tower in peril
 
 	// is there a better/more efficient way to do this? we could use an enummap, but i think that's less efficient.
 	// alternatively, I think type.ordinal() might be useful?
@@ -88,12 +91,12 @@ public class BroadcastInterface {
 		}
 		return -1;
 	}
-	
+
 	private static final int enemyTeamCountOffset = 64640;
 
 	public static int getRobotCount(RobotController rc, RobotType type, boolean isOurTeam) throws GameActionException {
 		int index = getRobotIndex(type);
-		if(!isOurTeam){
+		if (!isOurTeam) {
 			index += enemyTeamCountOffset;
 		}
 		return rc.readBroadcast(index);
@@ -101,7 +104,7 @@ public class BroadcastInterface {
 
 	public static void setRobotCount(RobotController rc, RobotType type, int count, boolean isOurTeam) throws GameActionException {
 		int index = getRobotIndex(type);
-		if(!isOurTeam){
+		if (!isOurTeam) {
 			index += enemyTeamCountOffset;
 		}
 		if (rc.readBroadcast(index) != count)
@@ -327,6 +330,7 @@ public class BroadcastInterface {
 	}
 
 	private static final int boysChannel = 64639;
+
 	public static boolean readPullBoysMode(RobotController rc) throws GameActionException {
 		return rc.readBroadcast(boysChannel) == 1;
 	}
@@ -337,6 +341,47 @@ public class BroadcastInterface {
 		} else {
 			rc.broadcast(boysChannel, 0);
 		}
+	}
+
+	// 64661: a boolean, whether there is a tower in peril
+	// 64662: coordinates of a tower in peril, if it exists
+	// 64663: number of enemies near tower in peril
+	private static final int isTowerInPerilChannel = 64661;
+	private static final int towerInPerilChannelChannel = 64662;
+	private static final int numEnemiesNearTowerInPerilChannel = 64663;
+
+	public static void resetTowerInPeril(RobotController rc) throws GameActionException {
+		rc.broadcast(isTowerInPerilChannel, 0);
+		rc.broadcast(numEnemiesNearTowerInPerilChannel, 0);
+	}
+
+	public static int getNumEnemiesNearTowerInPeril(RobotController rc) throws GameActionException {
+		return rc.readBroadcast(numEnemiesNearTowerInPerilChannel);
+	}
+
+	public static MapLocation getTowerInPeril(RobotController rc) throws GameActionException {
+		if (!isTowerInPeril(rc)) {
+			return null;
+		}
+		int combined = rc.readBroadcast(towerInPerilChannelChannel);
+		int x = (combined >> 16);
+		int y = (short) (0xFFFF & combined);
+		return new MapLocation(x, y);
+	}
+
+	public static void reportTowerInPeril(RobotController rc, int numEnemies, MapLocation location) throws GameActionException {
+		if (!isTowerInPeril(rc)) {
+			rc.broadcast(isTowerInPerilChannel, 1);
+		}
+
+		int combined = (location.x << 16) | (0xFFFF & location.y);
+		rc.broadcast(towerInPerilChannelChannel, combined);
+		rc.broadcast(numEnemiesNearTowerInPerilChannel, numEnemies);
+		System.out.println("tower at " + location + " claims to be in peril, with " + numEnemies + " enemies nearby!");
+	}
+
+	private static boolean isTowerInPeril(RobotController rc) throws GameActionException {
+		return rc.readBroadcast(isTowerInPerilChannel) == 1;
 	}
 
 }
