@@ -377,7 +377,6 @@ public class BroadcastInterface {
 		int combined = (location.x << 16) | (0xFFFF & location.y);
 		rc.broadcast(towerInPerilChannelChannel, combined);
 		rc.broadcast(numEnemiesNearTowerInPerilChannel, numEnemies);
-		System.out.println("tower at " + location + " claims to be in peril, with " + numEnemies + " enemies nearby!");
 	}
 
 	private static boolean isTowerInPeril(RobotController rc) throws GameActionException {
