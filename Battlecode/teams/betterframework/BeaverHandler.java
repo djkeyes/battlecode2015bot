@@ -20,6 +20,14 @@ public class BeaverHandler extends BaseRobotHandler {
 		// so in general, that should be their priority
 		LinkedList<Action> result = new LinkedList<Action>();
 		result.add(attack);
+
+		if (BroadcastInterface.shouldBuildMoreSupplyDepots(rc)) {
+			result.add(buildSupplyDepot);
+			result.add(mine);
+			result.add(scout);
+			return result;
+		}
+		
 		int numMinerFactories = BroadcastInterface.getRobotCount(rc, RobotType.MINERFACTORY);
 		if (numMinerFactories < 1) {
 			result.add(buildMinerFactory);

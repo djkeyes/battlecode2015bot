@@ -82,7 +82,7 @@ public class BeaverHandler extends BaseRobotHandler {
 			return result;
 		}
 		int numAerospacelabs = BroadcastInterface.getRobotCount(rc, RobotType.AEROSPACELAB);
-		if (numAerospacelabs < 3) {
+		if (numAerospacelabs < 1) {
 			result.add(buildAerospaceLab);
 			result.add(mine);
 			result.add(scout);
