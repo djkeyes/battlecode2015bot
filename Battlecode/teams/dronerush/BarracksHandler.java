@@ -15,10 +15,13 @@ public class BarracksHandler extends BaseBuildingHandler {
 
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
-		int numTankFactories = BroadcastInterface.getRobotCount(rc, RobotType.TANK);
+		int numTankFactories = BroadcastInterface.getRobotCount(rc, RobotType.TANKFACTORY);
+		int numTanks = BroadcastInterface.getRobotCount(rc, RobotType.TANK);
 
 		LinkedList<Action> result = new LinkedList<Action>();
-		if (numTankFactories >= 1) {
+		// bashers suck for early rush defense. their real purpose in life is dealing with clumps of launchers.
+		// so don't bother making them until we have some bulkier units out first.
+		if (numTankFactories >= 1 && numTanks >= 4) {
 			if (Strategy.shouldMakeBashers(rc)) {
 				result.add(makeBasher);
 			}
