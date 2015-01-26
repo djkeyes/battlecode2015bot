@@ -45,7 +45,7 @@ public class HQHandler extends BaseBuildingHandler {
 			int bfsDist = getDistanceFromEnemyHq(getOurHqLocation());
 			int euclidianDist = (int) Math.sqrt(getOurHqLocation().distanceSquaredTo(getEnemyHqLocation()));
 			// the 3 here is to factor in movement delay. most units cost 2 when supplied.
-			int maxDist = 2*Math.max(bfsDist, euclidianDist);
+			int maxDist = 2 * Math.max(bfsDist, euclidianDist);
 
 			if (rc.getRoundLimit() - Clock.getRoundNum() < 200 + maxDist) {
 				BroadcastInterface.setPullBoysMode(rc, true);
@@ -103,7 +103,8 @@ public class HQHandler extends BaseBuildingHandler {
 		boolean isHorizontalReflection = Util.checkIsHorizontalReflection(midpoint, ourHq, theirHq, ourTowers, theirTowers);
 		// BOTH diagonals
 		boolean isDiagonalReflection = Util.checkIsDiagonalReflection(midpoint, ourHq, theirHq, ourTowers, theirTowers);
-		boolean isReverseDiagonalReflection = Util.checkIsReverseDiagonalReflection(midpoint, ourHq, theirHq, ourTowers, theirTowers);
+		boolean isReverseDiagonalReflection = Util.checkIsReverseDiagonalReflection(midpoint, ourHq, theirHq, ourTowers,
+				theirTowers);
 		boolean isRotation = Util.checkIsRotation(midpoint, ourHq, theirHq, ourTowers, theirTowers);
 		BroadcastInterface.setMapConfiguration(rc, midpoint, Util.encodeMapConfigurationAsBitmask(isVerticalReflection,
 				isHorizontalReflection, isDiagonalReflection, isReverseDiagonalReflection, isRotation));

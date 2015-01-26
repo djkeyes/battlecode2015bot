@@ -19,10 +19,21 @@ public class HQHandler extends BaseBuildingHandler {
 	@Override
 	public void init() throws GameActionException {
 		// seed the distances for pathfinding
-		BroadcastInterface.setDistance(rc, rc.getLocation().x, rc.getLocation().y, 1);
+		BroadcastInterface.setDistance(rc, rc.getLocation().x, rc.getLocation().y, 1, rc.getLocation());
 		BroadcastInterface.enqueuePathfindingQueue(rc, rc.getLocation().x, rc.getLocation().y);
 
 		checkIfRotatedOrReflected();
+	}
+
+	private void atBeginningOfTurn() throws GameActionException {
+		// the HQ is guaranteed to run first
+		// so if you want to run code exactly once with a high priority, run it here
+
+		countUnitsAndCheckSupply();
+
+		determineAttackSignal();
+
+		BroadcastInterface.resetAbundantOre(rc);
 	}
 
 	@Override
@@ -36,19 +47,10 @@ public class HQHandler extends BaseBuildingHandler {
 
 		LinkedList<Action> result = new LinkedList<Action>();
 		result.add(attack);
-		if (BroadcastInterface.getRobotCount(rc, RobotType.BEAVER) < 10) {
+		if (BroadcastInterface.getRobotCount(rc, RobotType.BEAVER) < 3) {
 			result.add(makeBeavers);
 		}
 		return result;
-	}
-
-	private void atBeginningOfTurn() throws GameActionException {
-		// the HQ is guaranteed to run first
-		// so if you want to run code exactly once with a high priority, run it here
-
-		countUnits();
-
-		determineAttackSignal();
 	}
 
 	private void checkIfRotatedOrReflected() throws GameActionException {
@@ -59,10 +61,10 @@ public class HQHandler extends BaseBuildingHandler {
 		// however, it IS possible to be wrong. some maps may have identical tower placements whether they are rotated or reflected,
 		// and we would need to check the terrain and ore distributions to get a better idea
 
-		MapLocation ourHq = rc.senseHQLocation();
-		MapLocation theirHq = rc.senseEnemyHQLocation();
-		MapLocation[] ourTowers = rc.senseTowerLocations();
-		MapLocation[] theirTowers = rc.senseEnemyTowerLocations();
+		MapLocation ourHq = rc.getLocation();
+		MapLocation theirHq = getEnemyHqLocation();
+		MapLocation[] ourTowers = getOurTowerLocations();
+		MapLocation[] theirTowers = getEnemyTowerLocations();
 
 		// this is represented as a float because we eventually store it in 32-bits in the broadcast array
 		float[] midpoint = Util.findMidpoint(ourHq, theirHq);
@@ -77,42 +79,50 @@ public class HQHandler extends BaseBuildingHandler {
 				isHorizontalReflection, isDiagonalReflection, isReverseDiagonalReflection, isRotation));
 	}
 
-	private static final int DRONES_NEEDED_TO_CHARGE = 30;
-	private static final int DRONES_NEEDED_TO_RETREAT = 20;
+	private static final int SOLDIERS_NEEDED_TO_CHARGE = 15;
+	private static final int SOLDIERS_NEEDED_TO_RETREAT = 5;
 
 	private void determineAttackSignal() throws GameActionException {
 		boolean isSet = BroadcastInterface.readAttackMode(rc);
 		if (isSet) {
-			if (BroadcastInterface.getRobotCount(rc, RobotType.DRONE) <= DRONES_NEEDED_TO_RETREAT) {
+			if (BroadcastInterface.getRobotCount(rc, RobotType.SOLDIER) <= SOLDIERS_NEEDED_TO_RETREAT) {
 				BroadcastInterface.setAttackMode(rc, false);
 			}
 		} else {
-			if (BroadcastInterface.getRobotCount(rc, RobotType.DRONE) >= DRONES_NEEDED_TO_CHARGE) {
+			if (BroadcastInterface.getRobotCount(rc, RobotType.SOLDIER) >= SOLDIERS_NEEDED_TO_CHARGE) {
 				BroadcastInterface.setAttackMode(rc, true);
 			}
 		}
 	}
 
-	// it turns out EnumMaps really suck. they cost like 5x more bytecodes.
 	private final int[] counts = new int[RobotType.values().length];
 
-	private final RobotType[] releventTypes = { RobotType.BEAVER, RobotType.MINER, RobotType.SOLDIER, RobotType.DRONE,
-			RobotType.TANK, RobotType.MINERFACTORY, RobotType.BARRACKS, RobotType.HELIPAD, RobotType.TANKFACTORY, };
+	// we need to factor in that robots will always use some extra bytecodes
+	// that being said, we won't supply *everyone*, just a fraction of our army
+	private final double excessSupplyFactor = 1.1;
+	private final double fractionToKeepSupplied = 0.6;
 
-	public void countUnits() throws GameActionException {
+	public void countUnitsAndCheckSupply() throws GameActionException {
 		// the actual max map radius is like 120*120 + 100*100 or something. idk. but this is bigger, so it's okay.
 		int MAX_MAP_RADIUS = 100000000;
 		RobotInfo[] ourRobots = rc.senseNearbyRobots(MAX_MAP_RADIUS, rc.getTeam());
 
-		for (RobotType type : releventTypes) {
-			counts[type.ordinal()] = 0;
+		for (int i = 0; i < counts.length; i++) {
+			counts[i] = 0;
 		}
 		for (RobotInfo robot : ourRobots) {
 			counts[robot.type.ordinal()]++;
 		}
-		for (RobotType type : releventTypes) {
+		int supplyUpkeepNeeded = 0;
+		for (RobotType type : RobotType.values()) {
 			BroadcastInterface.setRobotCount(rc, type, counts[type.ordinal()]);
+			supplyUpkeepNeeded += counts[type.ordinal()] * type.supplyUpkeep;
 		}
+		double currentSupplyOutput = GameConstants.SUPPLY_GEN_BASE
+				* (GameConstants.SUPPLY_GEN_MULTIPLIER + Math.pow(counts[RobotType.SUPPLYDEPOT.ordinal()],
+						GameConstants.SUPPLY_GEN_EXPONENT));
+		BroadcastInterface.setBuildMoreSupplyDepots(rc, currentSupplyOutput < supplyUpkeepNeeded * excessSupplyFactor
+				* fractionToKeepSupplied);
 	}
 
 	private final Action attack = new HqAttack();
@@ -126,7 +136,7 @@ public class HQHandler extends BaseBuildingHandler {
 			// for example, the HQ can't hit an object at sq range 49 on the horizontal, but it CAN hit an object at sq range 50 on the
 			// diagonal
 			// so we have a little more logic to handle that
-			int numTowers = rc.senseTowerLocations().length;
+			int numTowers = getOurTowerLocations().length;
 			boolean hasRangeBuff = numTowers >= 2;
 			boolean hasAoeBuff = numTowers >= 5;
 			int actualRangeSq;

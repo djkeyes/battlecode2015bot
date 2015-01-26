@@ -13,15 +13,12 @@ public class TankFactoryHandler extends BaseBuildingHandler {
 		super(rc);
 	}
 
-
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
 		// production buildings are expensive, and we need to save up money.
 		// so don't produce units until we have enough production
 		LinkedList<Action> result = new LinkedList<Action>();
-		if (BroadcastInterface.getRobotCount(rc, RobotType.TANKFACTORY) >= 4) {
-			result.add(makeTank);
-		}
+		result.add(makeTank);
 		return result;
 	}
 

@@ -6,7 +6,7 @@ import java.util.List;
 import battlecode.common.GameActionException;
 import battlecode.common.RobotController;
 
-public class SupplyDepotHandler extends BaseRobotHandler {
+public class SupplyDepotHandler extends BaseBuildingHandler {
 
 	protected SupplyDepotHandler(RobotController rc) {
 		super(rc);

@@ -18,9 +18,7 @@ public class BarracksHandler extends BaseBuildingHandler {
 		// production buildings are expensive, and we need to save up money.
 		// so don't produce units until we have enough production
 		LinkedList<Action> result = new LinkedList<Action>();
-		if (BroadcastInterface.getRobotCount(rc, RobotType.TANKFACTORY) >= 1
-				&& BroadcastInterface.getRobotCount(rc, RobotType.SOLDIER) < 30) {
-			// imho, soldiers are better than bashers
+		if (BroadcastInterface.getRobotCount(rc, RobotType.TANKFACTORY) >= 1) {
 			result.add(makeSoldier);
 		}
 		return result;

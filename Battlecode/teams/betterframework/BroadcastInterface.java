@@ -2,6 +2,7 @@ package betterframework;
 
 import java.util.LinkedList;
 
+import battlecode.common.Clock;
 import battlecode.common.GameActionException;
 import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
@@ -28,6 +29,14 @@ public class BroadcastInterface {
 	// 58630: pathfinding queue tail address
 	// 58631: pathfinding queue current size
 	// 58632-61631: pathfinding queue
+	// 61632: number of miners with abundant ore, for economy feedback system, odd turns
+	// 61633: number of miners with abundant ore, for economy feedback system, even turns
+	// 61634: supply queue head address
+	// 61635: supply queue tail address
+	// 61636: supply queue current size
+	// 61637-64637: supply queue
+	// 64638: build more supply depots signal
+	// 64639: "pull the boys" and all attack signal
 
 	// is there a better/more efficient way to do this? we could use an enummap, but i think that's less efficient.
 	private static int getRobotIndex(RobotType type) {
@@ -96,14 +105,12 @@ public class BroadcastInterface {
 	// to solve this, i'm converting all coordinates to be relative to the HQ. this means they can range from [-120, 120] in x and
 	// [-30,30] in y. so be careful!
 
-	public static void setDistance(RobotController rc, int x, int y, int d) throws GameActionException {
-		MapLocation hqLoc = rc.senseHQLocation();
+	public static void setDistance(RobotController rc, int x, int y, int d, MapLocation hqLoc) throws GameActionException {
 		int channel = 20 + mapIndex(x - hqLoc.x, y - hqLoc.y);
 		rc.broadcast(channel, d);
 	}
 
-	public static int readDistance(RobotController rc, int x, int y) throws GameActionException {
-		MapLocation hqLoc = rc.senseHQLocation();
+	public static int readDistance(RobotController rc, int x, int y, MapLocation hqLoc) throws GameActionException {
 		int channel = 20 + mapIndex(x - hqLoc.x, y - hqLoc.y);
 		// System.out.println("reading from channel " + channel + "(x=" + x + ", y=" + y + ")");
 		return rc.readBroadcast(channel);
@@ -133,8 +140,7 @@ public class BroadcastInterface {
 	private static final int xMidpointChannel = 58627;
 	private static final int yMidpointChannel = 58628;
 
-	public static void setMapConfiguration(RobotController rc, float[] midpoint, int configurationBitmask)
-			throws GameActionException {
+	public static void setMapConfiguration(RobotController rc, float[] midpoint, int configurationBitmask) throws GameActionException {
 		rc.broadcast(configurationBitmaskChannel, configurationBitmask);
 		// we're storing the midpoint (a float which might end in 0.5) as an int here
 		// so be sure to convert it back during lookup!
@@ -161,6 +167,7 @@ public class BroadcastInterface {
 	private static final int PFQ_CAPACITY = 3000;
 
 	// TODO: if we could buffer and dequeue things several at a time, it would probably save us some bytecodes
+	// note: daniel tried doing this for enqueuing, but the cost of the linked list hardly made it worth it
 	// by reducing the number of broadcasts needed for head updates
 	public static int[] dequeuePathfindingQueue(RobotController rc) throws GameActionException {
 		int size = rc.readBroadcast(pfqSizeAddr);
@@ -175,6 +182,8 @@ public class BroadcastInterface {
 			int y = (short) (0xFFFF & combined);
 			return new int[] { x, y };
 		}
+		// TODO: when the queue is empty, that means we're done pathfinding. so we can just cache all the reads from here on out.
+		// alternatively, that means the queue is corrupted. =/
 		return null;
 	}
 
@@ -232,4 +241,92 @@ public class BroadcastInterface {
 		out.append("\n");
 		System.out.println(out.toString());
 	}
+
+	// 61632: number of miners with abundant ore, for economy feedback system
+	private static final int abundantOreChannel1 = 61632;
+	private static final int abundantOreChannel2 = 61633;
+
+	public static void resetAbundantOre(RobotController rc) throws GameActionException {
+		if ((Clock.getRoundNum() & 0x1) == 0) {
+			rc.broadcast(abundantOreChannel1, 0);
+		} else {
+			rc.broadcast(abundantOreChannel2, 0);
+		}
+	}
+
+	public static void incrementAbundantOre(RobotController rc) throws GameActionException {
+		if ((Clock.getRoundNum() & 0x1) == 0) {
+			rc.broadcast(abundantOreChannel1, rc.readBroadcast(abundantOreChannel1) + 1);
+		} else {
+			rc.broadcast(abundantOreChannel2, rc.readBroadcast(abundantOreChannel2) + 1);
+		}
+	}
+
+	public static int readPreviousRoundAbundantOre(RobotController rc) throws GameActionException {
+		if ((Clock.getRoundNum() & 0x1) != 0) {
+			return rc.readBroadcast(abundantOreChannel1);
+		} else {
+			return rc.readBroadcast(abundantOreChannel2);
+		}
+	}
+
+	// 61634: supply queue head address
+	// 61635: supply queue tail address
+	// 61636: supply queue current size
+	// 61637-64637: supply queue
+	private static final int sqHeadAddr = 61634;
+	private static final int sqTailAddr = 61635;
+	private static final int sqSizeAddr = 61636;
+	private static final int sqBaseAddr = 61637;
+	private static final int SQ_CAPACITY = 3000;
+
+	public static int dequeueSupplyQueue(RobotController rc) throws GameActionException {
+		int size = rc.readBroadcast(sqSizeAddr);
+		if (size > 0) {
+			int head = rc.readBroadcast(sqHeadAddr);
+			rc.broadcast(sqHeadAddr, (head + 1) % SQ_CAPACITY);
+			rc.broadcast(sqSizeAddr, size - 1);
+			return rc.readBroadcast(sqBaseAddr + head);
+		}
+		return -1;
+	}
+
+	public static boolean enqueueSupplyQueue(RobotController rc, int robotID) throws GameActionException {
+		int size = rc.readBroadcast(sqSizeAddr);
+		if (size < SQ_CAPACITY) {
+			int tail = rc.readBroadcast(sqTailAddr);
+			rc.broadcast(sqTailAddr, (tail + 1) % SQ_CAPACITY);
+			rc.broadcast(sqSizeAddr, size + 1);
+
+			rc.broadcast(sqBaseAddr + tail, robotID);
+			return true;
+		}
+		// TODO: handle the case when the queue is full
+		System.out.println("The supply queue is full. Maybe you should increase the size, or investigate why it filled up.");
+		return false;
+	}
+
+	private static int moreSupplyDepotChannel = 64638;
+
+	public static boolean shouldBuildMoreSupplyDepots(RobotController rc) throws GameActionException {
+		return rc.readBroadcast(moreSupplyDepotChannel) == 1;
+	}
+
+	public static void setBuildMoreSupplyDepots(RobotController rc, boolean shouldBuildMore) throws GameActionException {
+		rc.broadcast(moreSupplyDepotChannel, shouldBuildMore ? 1 : 0);
+	}
+
+	private static final int boysChannel = 64639;
+	public static boolean readPullBoysMode(RobotController rc) throws GameActionException {
+		return rc.readBroadcast(boysChannel) == 1;
+	}
+
+	public static void setPullBoysMode(RobotController rc, boolean shouldPull) throws GameActionException {
+		if (shouldPull) {
+			rc.broadcast(boysChannel, 1);
+		} else {
+			rc.broadcast(boysChannel, 0);
+		}
+	}
+
 }

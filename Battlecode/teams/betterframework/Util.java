@@ -9,8 +9,13 @@ import battlecode.common.MapLocation;
 public class Util {
 
 	// these are all the directions excluding OMNI and NONE
-	public static final Direction[] actualDirections = { Direction.NORTH, Direction.NORTH_EAST, Direction.EAST,
-			Direction.SOUTH_EAST, Direction.SOUTH, Direction.SOUTH_WEST, Direction.WEST, Direction.NORTH_WEST, };
+	public static final Direction[] actualDirections = { Direction.NORTH, Direction.NORTH_EAST, Direction.EAST, Direction.SOUTH_EAST,
+			Direction.SOUTH, Direction.SOUTH_WEST, Direction.WEST, Direction.NORTH_WEST, };
+
+	public static final Direction[] cardinalDirections = { Direction.NORTH, Direction.EAST,
+			Direction.SOUTH, Direction.WEST, };
+	public static final Direction[] unCardinalDirections = { Direction.NORTH_EAST, Direction.SOUTH_EAST,
+		Direction.SOUTH_WEST, Direction.NORTH_WEST, };
 
 	// for use when comparing floating point numbers
 	public static final double F_EPSILON = 1e-6;
@@ -68,10 +73,15 @@ public class Util {
 
 	public static Direction[] getDirectionsStrictlyToward(MapLocation cur, MapLocation dest) {
 		Direction toDest = cur.directionTo(dest);
+		return getDirectionsStrictlyToward(toDest);
+	}
+
+	public static Direction[] getDirectionsStrictlyToward(Direction toDest) {
 		Direction[] dirs = { toDest, toDest.rotateLeft(), toDest.rotateRight() };
 
 		return dirs;
 	}
+
 	public static int encodeMapConfigurationAsBitmask(boolean isVerticalReflection, boolean isHorizontalReflection,
 			boolean isDiagonalReflection, boolean isReverseDiagonalReflection, boolean isRotation) {
 		int bitmask = 0;
@@ -130,7 +140,6 @@ public class Util {
 		int dy = dx;
 		return original.add(dx, dy);
 	}
-	
 
 	public static float[] findMidpoint(MapLocation ourHq, MapLocation theirHq) {
 		float x = midpoint(ourHq.x, theirHq.x);

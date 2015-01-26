@@ -27,8 +27,8 @@ public class SoldierHandler extends BaseRobotHandler {
 		return result;
 	}
 
-	private final Action attack = new Attack();
+	private final Action attack = new AttackCautiously(true);
 	private final Action scout = new ScoutOutward();
-	private final Action advance = new MoveTowardEnemyHq();
+	private final Action advance = new MoveTowardEnemyHq(false, false);
 	private final Action retreat = new Retreat();
 }

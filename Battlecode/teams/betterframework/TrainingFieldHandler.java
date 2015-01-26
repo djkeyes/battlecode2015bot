@@ -6,7 +6,7 @@ import java.util.List;
 import battlecode.common.GameActionException;
 import battlecode.common.RobotController;
 
-public class TrainingFieldHandler extends BaseRobotHandler {
+public class TrainingFieldHandler extends BaseBuildingHandler {
 
 	protected TrainingFieldHandler(RobotController rc) {
 		super(rc);

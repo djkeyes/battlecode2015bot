@@ -21,7 +21,7 @@ public class BeaverHandler extends BaseRobotHandler {
 		LinkedList<Action> result = new LinkedList<Action>();
 		result.add(attack);
 		int numMinerFactories = BroadcastInterface.getRobotCount(rc, RobotType.MINERFACTORY);
-		if (numMinerFactories < 3) {
+		if (numMinerFactories < 1) {
 			result.add(buildMinerFactory);
 			result.add(mine);
 			result.add(scout);
@@ -36,14 +36,13 @@ public class BeaverHandler extends BaseRobotHandler {
 		}
 		// tank factories cost 500, helipads cost 300. so prioritize tank factories when we want them.
 		int numTankFactories = BroadcastInterface.getRobotCount(rc, RobotType.TANKFACTORY);
-		int numHelipads = BroadcastInterface.getRobotCount(rc, RobotType.HELIPAD);
-		if (1.5 * numTankFactories > numHelipads) {
-			result.add(buildHelipad);
+		if (numTankFactories < 1) {
+			result.add(buildTankFactory);
 			result.add(mine);
 			result.add(scout);
 			return result;
 		}
-		result.add(buildTankFactory);
+		result.add(buildBarracks);
 		result.add(mine);
 		result.add(scout);
 		return result;
@@ -93,10 +92,18 @@ public class BeaverHandler extends BaseRobotHandler {
 
 			Direction bestDir = null;
 			int maxDist = 0;
-			for (Direction d : Util.actualDirections) {
+			// protip: only buildings on checker squares, so that way your base is (almost) always pathable
+			// to do this, we check to see if both tiles of the square are even XOR odd
+			Direction[] potentialDirs;
+			if ((rc.getLocation().x & 0x1) == (rc.getLocation().y & 0x1)) {
+				potentialDirs = Util.cardinalDirections;
+			} else {
+				potentialDirs = Util.unCardinalDirections;
+			}
+			for (Direction d : potentialDirs) {
 				MapLocation adjLoc = rc.getLocation();
 				if (rc.canBuild(d, type)) {
-					int adjDist = BroadcastInterface.readDistance(rc, adjLoc.x, adjLoc.y);
+					int adjDist = BroadcastInterface.readDistance(rc, adjLoc.x, adjLoc.y, getOurHqLocation());
 					if (bestDir == null || adjDist > maxDist) {
 						bestDir = d;
 					}

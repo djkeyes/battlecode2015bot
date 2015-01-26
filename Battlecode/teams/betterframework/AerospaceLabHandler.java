@@ -6,7 +6,7 @@ import java.util.List;
 import battlecode.common.GameActionException;
 import battlecode.common.RobotController;
 
-public class AerospaceLabHandler extends BaseRobotHandler {
+public class AerospaceLabHandler extends BaseBuildingHandler {
 
 	protected AerospaceLabHandler(RobotController rc) {
 		super(rc);
