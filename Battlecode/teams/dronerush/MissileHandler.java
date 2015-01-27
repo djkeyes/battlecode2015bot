@@ -2,24 +2,21 @@ package dronerush;
 
 import java.util.List;
 
-import battlecode.common.Clock;
 import battlecode.common.Direction;
 import battlecode.common.GameActionException;
-import battlecode.common.GameConstants;
+import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
 import battlecode.common.RobotType;
 
 public class MissileHandler extends BaseRobotHandler {
 
-	private int spawnTurn;
-	private boolean isFirstTurn;
+	private int motherId = -1;
+	private int motherLauncherIndex = -1;
+	private MapLocation target = null;
 
 	protected MissileHandler(RobotController rc) {
-		super(rc);
-
-		spawnTurn = Clock.getRoundNum();
-		isFirstTurn = true;
+		super(rc, true);
 	}
 
 	// missiles are super strapped down in computation (they only get 500 bytecodes).
@@ -29,42 +26,53 @@ public class MissileHandler extends BaseRobotHandler {
 		while (true) {
 			try {
 				if (rc.isCoreReady()) {
-					if (isFirstTurn) {
-						// on the first turn, we don't really have time to look at ALL the nearby enemies
-						// so just try to get away from allies
+					// travel toward the designated target
+					if (motherId == -1) {
+						// try to find whoever launched us
 						RobotInfo[] nearbyAllies = rc.senseNearbyRobots(2, rc.getTeam());
 						for (int i = 0; i < nearbyAllies.length; i++) {
 							if (nearbyAllies[i].type == RobotType.LAUNCHER) {
-								Direction directionAway = nearbyAllies[i].location.directionTo(rc.getLocation());
-								if (rc.canMove(directionAway)) {
-									rc.move(directionAway);
+								motherId = nearbyAllies[i].ID;
+
+								// during the first turn, we don't have enough bytecodes to look up the actual target
+								// so just try to get away from mom
+								Direction awayDir = nearbyAllies[i].location.directionTo(rc.getLocation());
+								if (rc.canMove(awayDir)) {
+									rc.move(awayDir);
+								} else if (rc.canMove(awayDir.rotateLeft())) {
+									rc.move(awayDir.rotateLeft());
+								} else if (rc.canMove(awayDir.rotateRight())) {
+									rc.move(awayDir.rotateRight());
 								}
 								break;
 							}
 						}
-						isFirstTurn = false;
 					} else {
-						// it would be nice to always go towards the closest opponent
-						// but we really don't have the bytecodes to do that.
-						// so just go toward ANY opponent
-						int turnsLeft = spawnTurn + GameConstants.MISSILE_LIFESPAN - Clock.getRoundNum() + 1;
-						RobotInfo[] nearbyEnemies = rc.senseNearbyRobots(2 * turnsLeft * turnsLeft, rc.getTeam().opponent());
-						RobotInfo[] nearbyAllies;
-						if (nearbyEnemies.length > 0) {
-							nearbyAllies = rc.senseNearbyRobots(2, rc.getTeam());
-							if (nearbyEnemies[0].location.isAdjacentTo(rc.getLocation()) && nearbyAllies.length == 0) {
-								rc.explode();
-							}
+						if (motherLauncherIndex == -1) {
+							motherLauncherIndex = BroadcastInterface.getLauncherIndex(rc, motherId);
+							target = BroadcastInterface.findLauncherTarget(rc, motherLauncherIndex);
+						}
 
-							Direction curDir = rc.getLocation().directionTo(nearbyEnemies[0].location);
-							if (rc.canMove(curDir)) {
-								// if the path is blocked, no worries. we still have several more turns
-								rc.move(curDir);
+						// we found our mother, but she doesn't want us to kill anything :(
+						if (target != null) {
+							// TODO: should we disregard adjacent allied missiles in these counts?
+							if (rc.getLocation().isAdjacentTo(target)
+									|| (rc.senseNearbyRobots(2, rc.getTeam().opponent()).length > 0 && rc.senseNearbyRobots(2, rc
+											.getTeam().opponent()).length == 0)) {
+								rc.explode();
+							} else {
+								Direction awayDir = rc.getLocation().directionTo(target);
+								if (rc.canMove(awayDir)) {
+									rc.move(awayDir);
+								} else if (rc.canMove(awayDir.rotateLeft())) {
+									rc.move(awayDir.rotateLeft());
+								} else if (rc.canMove(awayDir.rotateRight())) {
+									rc.move(awayDir.rotateRight());
+								}
 							}
 						} else {
-							// if we get here, it means our old target disappeared
-							// just try to avoid teammates
-							nearbyAllies = rc.senseNearbyRobots(2, rc.getTeam());
+							// otherwise just path away from teammates
+							RobotInfo[] nearbyAllies = rc.senseNearbyRobots(2, rc.getTeam());
 							if (nearbyAllies.length > 0) {
 								Direction directionAway = nearbyAllies[0].location.directionTo(rc.getLocation());
 								if (rc.canMove(directionAway)) {

@@ -12,8 +12,16 @@ import battlecode.common.RobotInfo;
 
 public class LauncherHandler extends BaseBuildingHandler {
 
+	private int launcherIndex;
+
 	protected LauncherHandler(RobotController rc) {
 		super(rc);
+
+		try {
+			launcherIndex = BroadcastInterface.addLauncherAndGetLauncherIndex(rc, rc.getID());
+		} catch (GameActionException e) {
+			e.printStackTrace();
+		}
 	}
 
 	@Override
@@ -39,6 +47,9 @@ public class LauncherHandler extends BaseBuildingHandler {
 		private Action retreat;
 		private int originalMissileCount;
 
+		// this variable has some weird temporal coupling. please fix it in the future. :(
+		private MapLocation curTarget = null;
+
 		public MissileAttack() {
 			retreat = new Retreat();
 		}
@@ -57,7 +68,7 @@ public class LauncherHandler extends BaseBuildingHandler {
 					return false;
 				}
 
-				if (launchMissiles(enemy)) {
+				if (launchMissiles(enemy, curTarget)) {
 					return true;
 				}
 			}
@@ -92,6 +103,7 @@ public class LauncherHandler extends BaseBuildingHandler {
 						if (isDirLaunchable[curDir.ordinal()]) {
 							minDistSq = distSq;
 							bestDir = curDir;
+							curTarget = enemy.location;
 							break;
 						}
 					}
@@ -107,6 +119,7 @@ public class LauncherHandler extends BaseBuildingHandler {
 						if (distSq <= minDistSq) {
 							minDistSq = distSq;
 							bestDir = curDir;
+							curTarget = enemyTower;
 						}
 					}
 				}
@@ -119,14 +132,16 @@ public class LauncherHandler extends BaseBuildingHandler {
 					if (distSq <= minDistSq) {
 						minDistSq = distSq;
 						bestDir = curDir;
+						curTarget = enemyHq;
 					}
 				}
 			}
 			return bestDir;
 		}
 
-		private boolean launchMissiles(Direction enemyDir) throws GameActionException {
+		private boolean launchMissiles(Direction enemyDir, MapLocation enemyLoc) throws GameActionException {
 			if (rc.isCoreReady()) {
+				BroadcastInterface.setLauncherTarget(rc, launcherIndex, enemyLoc);
 				for (Direction curDir : Util.getDirectionsStrictlyToward(enemyDir)) {
 					if (rc.canLaunch(curDir)) {
 						rc.launchMissile(curDir);
@@ -137,6 +152,7 @@ public class LauncherHandler extends BaseBuildingHandler {
 				// so stay in place
 				return true;
 			}
+			BroadcastInterface.setLauncherTarget(rc, launcherIndex, null);
 			return false;
 		}
 	}

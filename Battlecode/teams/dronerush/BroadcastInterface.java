@@ -7,6 +7,7 @@ import battlecode.common.GameActionException;
 import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
+import battlecode.common.RobotInfo;
 import battlecode.common.RobotType;
 
 public class BroadcastInterface {
@@ -42,6 +43,7 @@ public class BroadcastInterface {
 	// 64662: coordinates of a tower in peril, if it exists
 	// 64663: number of enemies near tower in peril
 	// 64664: a number corrosponding to the current strategy
+	// 64665-65264: a list of launchers and the enemies they are targeting
 
 	// is there a better/more efficient way to do this? we could use an enummap, but i think that's less efficient.
 	// alternatively, I think type.ordinal() might be useful?
@@ -392,6 +394,64 @@ public class BroadcastInterface {
 
 	public static int getStrategyValue(RobotController rc) throws GameActionException {
 		return rc.readBroadcast(strategyChannel);
+	}
+
+	// 64665-65264: a list of launchers and the enemies they are targeting
+	private static final int launcherTargetListListBaseChannel = 64665;
+	private static final int launcherListSize = 600;
+
+	public static MapLocation findLauncherTarget(RobotController rc, int launcherIndex) throws GameActionException {
+		if (rc.readBroadcast(launcherTargetListListBaseChannel + launcherIndex * 3 + 1) == 1) {
+			int combined = rc.readBroadcast(launcherTargetListListBaseChannel + launcherIndex * 3 + 2);
+			int x = (combined >> 16);
+			int y = (short) (0xFFFF & combined);
+			return new MapLocation(x, y);
+		} else {
+			return null;
+		}
+	}
+
+	public static void clearDeadLaunchers(RobotController rc) throws GameActionException {
+		for (int i = 0; i < launcherListSize / 3; i++) {
+			int id = rc.readBroadcast(launcherTargetListListBaseChannel + i * 3);
+			if (id > 0) {
+				RobotInfo robot = rc.senseRobot(id);
+				if (robot == null || robot.type != RobotType.LAUNCHER || robot.team != rc.getTeam()) {
+					rc.broadcast(launcherTargetListListBaseChannel + i * 3, 0);
+				}
+			}
+		}
+	}
+
+	public static int addLauncherAndGetLauncherIndex(RobotController rc, int launcherId) throws GameActionException {
+		for (int i = 0; i < launcherListSize / 3; i++) {
+			int id = rc.readBroadcast(launcherTargetListListBaseChannel + i * 3);
+			if (id == 0) {
+				rc.broadcast(launcherTargetListListBaseChannel + i * 3, launcherId);
+				return i;
+			}
+		}
+		return -1;
+	}
+
+	public static int getLauncherIndex(RobotController rc, int launcherId) throws GameActionException {
+		for (int i = 0; i < launcherListSize / 3; i++) {
+			int id = rc.readBroadcast(launcherTargetListListBaseChannel + i * 3);
+			if (id == launcherId) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
+	public static void setLauncherTarget(RobotController rc, int launcherIndex, MapLocation target) throws GameActionException {
+		if (target == null) {
+			rc.broadcast(launcherTargetListListBaseChannel + launcherIndex * 3 + 1, 0);
+		} else {
+			rc.broadcast(launcherTargetListListBaseChannel + launcherIndex * 3 + 1, 1);
+			int combined = (target.x << 16) | (0xFFFF & target.y);
+			rc.broadcast(launcherTargetListListBaseChannel + launcherIndex * 3 + 2, combined);
+		}
 	}
 
 }

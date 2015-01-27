@@ -79,6 +79,10 @@ public abstract class BaseRobotHandler {
 		}
 	}
 
+	protected BaseRobotHandler(RobotController rc, boolean lowPower) {
+		this.rc = rc;
+	}
+
 	public int maxBytecodesToUse() {
 		if (rc.getSupplyLevel() <= 1.0) {
 			// if we're unsupplied, we get a bunch of free bytecodes
@@ -736,24 +740,37 @@ public abstract class BaseRobotHandler {
 
 	// opposite of scouting outward. try to move back toward hq.
 	public class Retreat implements Action {
+		private boolean retreatOrthogonally;
+
+		public Retreat() {
+			this(false);
+		}
+
+		public Retreat(boolean retreatOrthogonally) {
+			this.retreatOrthogonally = retreatOrthogonally;
+		}
 
 		@Override
 		public boolean run() throws GameActionException {
 			if (rc.isCoreReady()) {
 				// quick check: if we don't know the BFS to our current location, we *probably* don't know the adjacent ones
 				// this is sub-optimal, but saves us bytecodes
-				if (getDistanceFromOurHq(rc.getLocation()) == 0) {
+				int curDist = getDistanceFromOurHq(rc.getLocation());
+				if (curDist == 0) {
 					return false;
 				}
-				int minDist = Integer.MAX_VALUE;
+				int minDist = curDist;
 				Direction nextDir = null;
-				for (Direction adjDir : Util.actualDirections) {
+				for (Direction adjDir : Util.getRandomDirectionOrdering(gen)) {
 					MapLocation adjLoc = rc.getLocation().add(adjDir);
 					if (rc.canMove(adjDir) && !inEnemyHqOrTowerRange(adjLoc)) {
 						int adjDist = getDistanceFromOurHq(adjLoc);
 						if (adjDist != 0 && adjDist < minDist) {
-							minDist = adjDist;
-							nextDir = adjDir;
+							// for some units, it's smarter to expand out, rather than taking the shortest path
+							if (retreatOrthogonally || adjDist >= curDist - 1) {
+								minDist = adjDist;
+								nextDir = adjDir;
+							}
 						}
 					}
 				}
