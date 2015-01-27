@@ -22,14 +22,13 @@ public class BasherHandler extends BaseRobotHandler {
 		if (BroadcastInterface.readAttackMode(rc)) {
 			result.add(advance);
 		} else {
-			// TODO: gather at some kind of central point
 			result.add(defend);
 		}
 		return result;
 	}
 
 	private final Action basherAttack = new BasherAttack();
-	private final Action advance = new MoveTowardEnemyHq(false, false);
+	private final Action advance = new AttackInAWave();
 	private final Action defend = new Defend();
 
 	public class BasherAttack implements Action {

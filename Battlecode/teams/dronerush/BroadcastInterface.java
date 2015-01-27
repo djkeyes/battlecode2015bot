@@ -44,6 +44,9 @@ public class BroadcastInterface {
 	// 64663: number of enemies near tower in peril
 	// 64664: a number corrosponding to the current strategy
 	// 64665-65264: a list of launchers and the enemies they are targeting
+	// 65265: a map location of the next tower/hq to go to
+	// 65266: a flag of whether to move into tower range
+	// 65267: a count of the number of allies in tower range
 
 	// is there a better/more efficient way to do this? we could use an enummap, but i think that's less efficient.
 	// alternatively, I think type.ordinal() might be useful?
@@ -452,6 +455,47 @@ public class BroadcastInterface {
 			int combined = (target.x << 16) | (0xFFFF & target.y);
 			rc.broadcast(launcherTargetListListBaseChannel + launcherIndex * 3 + 2, combined);
 		}
+	}
+
+	// 65265: a map location of the next tower/hq to go to
+	// 65266: a flag of whether to move into tower range
+	// 65267: a count of the number of allies in tower range
+	private static final int nextTargetChannel = 65265;
+	private static final int advanceBitChannel = 65266;
+	private static final int nearbyAllyCountsChannel = 65267;
+
+	public static void setNextTarget(RobotController rc, MapLocation target) throws GameActionException {
+		int combined = (target.x << 16) | (0xFFFF & target.y);
+		rc.broadcast(nextTargetChannel, combined);
+	}
+
+	public static MapLocation getNextTarget(RobotController rc) throws GameActionException {
+		int combined = rc.readBroadcast(nextTargetChannel);
+		int x = (combined >> 16);
+		int y = (short) (0xFFFF & combined);
+		return new MapLocation(x, y);
+	}
+
+	public static boolean getAdvanceBit(RobotController rc) throws GameActionException {
+		return rc.readBroadcast(advanceBitChannel) == 1;
+	}
+
+	public static void setAdvanceBit(RobotController rc, boolean value) throws GameActionException {
+		rc.broadcast(advanceBitChannel, value ? 1 : 0);
+	}
+
+	public static int getAlliesInPosition(RobotController rc) throws GameActionException {
+		return rc.readBroadcast(nearbyAllyCountsChannel);
+	}
+
+	public static void clearAlliesInPosition(RobotController rc) throws GameActionException {
+		rc.broadcast(nearbyAllyCountsChannel, 0);
+	}
+
+	public static void incrementAlliesInPosition(RobotController rc) throws GameActionException {
+		int value = getAlliesInPosition(rc);
+		value++;
+		rc.broadcast(nearbyAllyCountsChannel, value);
 	}
 
 }

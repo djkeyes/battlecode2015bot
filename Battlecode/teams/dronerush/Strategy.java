@@ -57,6 +57,10 @@ public abstract class Strategy {
 
 	public abstract RobotType getBeaverBuildOrder() throws GameActionException;
 
+	public abstract boolean shouldAttack() throws GameActionException;
+
+	public abstract boolean shouldWithdraw() throws GameActionException;
+
 	private static class DroneRush extends Strategy {
 		public DroneRush(RobotController rc) {
 			super(rc);
@@ -139,6 +143,31 @@ public abstract class Strategy {
 		@Override
 		public boolean shouldAggroWithDrones() throws GameActionException {
 			return true;
+		}
+
+		private final int TANKS_NEEDED_TO_ATTACK = 10;
+		private final int BASHERS_NEEDED_TO_ATTACK = 10;
+		private final int LAUNCHERS_NEEDED_TO_ATTACK = 5;
+		private final int TANKS_NEEDED_TO_RETREAT = 3;
+		private final int BASHERS_NEEDED_TO_RETREAT = 2;
+		private final int LAUNCHERS_NEEDED_TO_RETREAT = 2;
+
+		@Override
+		public boolean shouldAttack() throws GameActionException {
+			int tankCount = BroadcastInterface.getRobotCount(rc, RobotType.TANK, true);
+			int basherCount = BroadcastInterface.getRobotCount(rc, RobotType.BASHER, true);
+			int launcherCount = BroadcastInterface.getRobotCount(rc, RobotType.LAUNCHER, true);
+
+			return ((tankCount >= TANKS_NEEDED_TO_ATTACK) && (basherCount >= BASHERS_NEEDED_TO_ATTACK) && launcherCount >= (LAUNCHERS_NEEDED_TO_ATTACK));
+		}
+
+		@Override
+		public boolean shouldWithdraw() throws GameActionException {
+			int tankCount = BroadcastInterface.getRobotCount(rc, RobotType.TANK, true);
+			int basherCount = BroadcastInterface.getRobotCount(rc, RobotType.BASHER, true);
+			int launcherCount = BroadcastInterface.getRobotCount(rc, RobotType.LAUNCHER, true);
+			return (tankCount <= TANKS_NEEDED_TO_RETREAT) && (basherCount <= BASHERS_NEEDED_TO_RETREAT)
+					&& launcherCount <= (LAUNCHERS_NEEDED_TO_RETREAT);
 		}
 	}
 
@@ -228,6 +257,30 @@ public abstract class Strategy {
 		@Override
 		public boolean shouldAggroWithDrones() throws GameActionException {
 			return false;
+		}
+
+		private final int TANKS_NEEDED_TO_ATTACK = 10;
+		private final int SOLDIERS_NEEDED_TO_ATTACK = 20;
+		private final int LAUNCHERS_NEEDED_TO_ATTACK = 5;
+		private final int TANKS_NEEDED_TO_RETREAT = 5;
+		private final int SOLDIERS_NEEDED_TO_RETREAT = 3;
+		private final int LAUNCHERS_NEEDED_TO_RETREAT = 2;
+
+		@Override
+		public boolean shouldAttack() throws GameActionException {
+			int tankCount = BroadcastInterface.getRobotCount(rc, RobotType.TANK, true);
+			int soldierCount = BroadcastInterface.getRobotCount(rc, RobotType.SOLDIER, true);
+			int launcherCount = BroadcastInterface.getRobotCount(rc, RobotType.LAUNCHER, true);
+			return ((tankCount >= TANKS_NEEDED_TO_ATTACK) && (soldierCount >= SOLDIERS_NEEDED_TO_ATTACK) && launcherCount >= (LAUNCHERS_NEEDED_TO_ATTACK));
+		}
+
+		@Override
+		public boolean shouldWithdraw() throws GameActionException {
+			int tankCount = BroadcastInterface.getRobotCount(rc, RobotType.TANK, true);
+			int soldierCount = BroadcastInterface.getRobotCount(rc, RobotType.SOLDIER, true);
+			int launcherCount = BroadcastInterface.getRobotCount(rc, RobotType.LAUNCHER, true);
+			return (tankCount <= TANKS_NEEDED_TO_RETREAT) && (soldierCount <= SOLDIERS_NEEDED_TO_RETREAT)
+					&& launcherCount <= (LAUNCHERS_NEEDED_TO_RETREAT);
 		}
 
 	}

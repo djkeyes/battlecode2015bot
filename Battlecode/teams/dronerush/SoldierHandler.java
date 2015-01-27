@@ -3,6 +3,7 @@ package dronerush;
 import java.util.LinkedList;
 import java.util.List;
 
+import dronerush.BaseRobotHandler.AttackInAWave;
 import battlecode.common.GameActionException;
 import battlecode.common.RobotController;
 
@@ -28,6 +29,6 @@ public class SoldierHandler extends BaseRobotHandler {
 	}
 
 	private final Action attackMaxDps = new AttackCautiously(false);
-	private final Action advance = new MoveTowardEnemyHq(false, false);
+	private final Action advance = new AttackInAWave();
 	private final Action defend = new Defend();
 }

@@ -878,6 +878,61 @@ public abstract class BaseRobotHandler {
 		}
 	}
 
+	public class AttackInAWave implements Action {
+		private MapLocation target = null;
+		private Action curAction;
+		private boolean avoidingTowers = false;
+		private boolean goingToHq = false;
+
+		@Override
+		public boolean run() throws GameActionException {
+			if(target != null && rc.canSenseLocation(target)){
+				RobotInfo curOccupant = rc.senseRobotAtLocation(target);
+				if(curOccupant == null || curOccupant.type != RobotType.TOWER){
+					// WE GOT IT!
+					target = null;
+				}
+			}
+			if (target == null) {
+				target = BroadcastInterface.getNextTarget(rc);
+
+				if (target.equals(getEnemyHqLocation())) {
+					curAction = new MoveTowardEnemyHq(true, false);
+					goingToHq = true;
+				} else {
+					curAction = new MoveTo(target, true, false);
+					goingToHq = false;
+				}
+				avoidingTowers = true;
+			}
+
+			boolean avoidTowers = !BroadcastInterface.getAdvanceBit(rc);
+			// if we were avoiding towers but now we don't have to, change the actions
+			if (avoidingTowers && !avoidTowers) {
+				if (target.equals(getEnemyHqLocation())) {
+					curAction = new MoveTowardEnemyHq(false, false);
+				} else {
+					curAction = new MoveTo(target, false, false);
+				}
+			}
+
+			if (nearTarget()) {
+				BroadcastInterface.incrementAlliesInPosition(rc);
+			}
+			return curAction.run();
+		}
+
+		private boolean nearTarget() {
+			int distSqThresh;
+			if (goingToHq) {
+				distSqThresh = 81;
+			} else {
+				distSqThresh = 64;
+			}
+			return rc.getLocation().distanceSquaredTo(target) <= distSqThresh;
+		}
+	}
+
 	// only beavers and miners can mine
 	// this also includes some exploratory behavior, which is triggered if there's better mineral patches nearby
 

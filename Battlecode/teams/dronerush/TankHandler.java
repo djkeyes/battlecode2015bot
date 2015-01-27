@@ -3,7 +3,9 @@ package dronerush;
 import java.util.LinkedList;
 import java.util.List;
 
+import dronerush.BaseRobotHandler.MoveTowardEnemyHq;
 import battlecode.common.GameActionException;
+import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 
 public class TankHandler extends BaseRobotHandler {
@@ -32,6 +34,7 @@ public class TankHandler extends BaseRobotHandler {
 	// that being said, they outrange most things, so staying out of enemy range is kind of important.
 	private final Action attack = new AttackCautiously(/* retreatOnWeaponCooldown */true);
 	private final Action attackMaxDps = new AttackCautiously(false);
-	private final Action advance = new MoveTowardEnemyHq(false, false);
+	private final Action advance = new AttackInAWave();
 	private final Action defend = new Defend();
+
 }

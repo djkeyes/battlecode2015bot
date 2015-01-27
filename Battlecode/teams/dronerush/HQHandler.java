@@ -40,6 +40,49 @@ public class HQHandler extends BaseBuildingHandler {
 		BroadcastInterface.resetAbundantOre(rc);
 
 		BroadcastInterface.resetTowerInPeril(rc);
+
+		calculateAdvancementTactics();
+	}
+
+	private int oldTowerCount = -1;
+
+	private void calculateAdvancementTactics() throws GameActionException {
+		MapLocation[] enemyTowers = getEnemyTowerLocations();
+		int curTowerCount = enemyTowers.length;
+		if (curTowerCount != oldTowerCount) {
+			// get a new target any time the enemy loses a tower
+			oldTowerCount = curTowerCount;
+			if (curTowerCount == 0) {
+				BroadcastInterface.setNextTarget(rc, getEnemyHqLocation());
+			} else {
+				// pick the closest one
+				// TODO: proceed through the towers in a sensible order
+				int next = 0;
+				int dist = Integer.MAX_VALUE;
+				// TODO: cache a sorted list of tower distances, so we don't have to recalculate
+				for (int i = 0; i < enemyTowers.length; i++) {
+					int curDist = getOurHqLocation().distanceSquaredTo(enemyTowers[i]);
+					if (curDist < dist) {
+						next = i;
+						dist = curDist;
+					}
+				}
+				BroadcastInterface.setNextTarget(rc, enemyTowers[next]);
+			}
+		}
+
+		int curCount = BroadcastInterface.getAlliesInPosition(rc);
+		BroadcastInterface.clearAlliesInPosition(rc);
+		boolean isSet = BroadcastInterface.getAdvanceBit(rc);
+		if (isSet) {
+			if (curCount <= 4) {
+				BroadcastInterface.setAdvanceBit(rc, false);
+			}
+		} else {
+			if (curCount >= 9) {
+				BroadcastInterface.setAdvanceBit(rc, true);
+			}
+		}
 	}
 
 	@Override
@@ -98,30 +141,16 @@ public class HQHandler extends BaseBuildingHandler {
 				isHorizontalReflection, isDiagonalReflection, isReverseDiagonalReflection, isRotation));
 	}
 
-	private final int TANKS_NEEDED_TO_ATTACK = 15;
-	private final int BASHERS_NEEDED_TO_ATTACK = 10;
-	private final int LAUNCHERS_NEEDED_TO_ATTACK = 5;
-	private final int TANKS_NEEDED_TO_RETREAT = 5;
-	private final int BASHERS_NEEDED_TO_RETREAT = 2;
-	private final int LAUNCHERS_NEEDED_TO_RETREAT = 2;
-
 	private void determineAttackSignal() throws GameActionException {
 		boolean isSet = BroadcastInterface.readAttackMode(rc);
-		int tankCount = BroadcastInterface.getRobotCount(rc, RobotType.TANK, true);
-		int basherCount = BroadcastInterface.getRobotCount(rc, RobotType.BASHER, true);
-		int launcherCount = BroadcastInterface.getRobotCount(rc, RobotType.LAUNCHER, true);
 		boolean isTimeToPullTheBoys = shouldPullTheBoys();
 		if (isSet) {
-			boolean shouldRetreat = (tankCount <= TANKS_NEEDED_TO_RETREAT) && (basherCount <= BASHERS_NEEDED_TO_RETREAT)
-					&& launcherCount <= (LAUNCHERS_NEEDED_TO_RETREAT) && !isTimeToPullTheBoys;
-			if (shouldRetreat) {
+			if (curStrategy.shouldWithdraw() && !isTimeToPullTheBoys) {
 				BroadcastInterface.setAttackMode(rc, false);
 			}
 
 		} else {
-			boolean shouldAttack = ((tankCount >= TANKS_NEEDED_TO_ATTACK) && (basherCount >= BASHERS_NEEDED_TO_ATTACK) && launcherCount >= (LAUNCHERS_NEEDED_TO_ATTACK))
-					|| isTimeToPullTheBoys;
-			if (shouldAttack) {
+			if (curStrategy.shouldAttack() || isTimeToPullTheBoys) {
 				BroadcastInterface.setAttackMode(rc, true);
 			}
 		}
