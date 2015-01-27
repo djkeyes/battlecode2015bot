@@ -47,8 +47,9 @@ public class LauncherHandler extends BaseBuildingHandler {
 		private Action retreat;
 		private int originalMissileCount;
 
-		// this variable has some weird temporal coupling. please fix it in the future. :(
+		// these variables have some weird temporal coupling. please fix them in the future. :(
 		private MapLocation curTarget = null;
+		private boolean[] isDirLaunchable;
 
 		public MissileAttack() {
 			retreat = new Retreat();
@@ -85,7 +86,7 @@ public class LauncherHandler extends BaseBuildingHandler {
 		}
 
 		private Direction findEnemyDirection() {
-			boolean[] isDirLaunchable = new boolean[Direction.values().length];
+			isDirLaunchable = new boolean[Direction.values().length];
 			for (Direction d : Util.actualDirections) {
 				if (rc.canLaunch(d)) {
 					isDirLaunchable[d.ordinal()] = true;
@@ -99,13 +100,14 @@ public class LauncherHandler extends BaseBuildingHandler {
 			for (RobotInfo enemy : nearby) {
 				int distSq = enemy.location.distanceSquaredTo(rc.getLocation());
 				if (distSq <= minDistSq) {
-					for (Direction curDir : Util.getDirectionsStrictlyToward(rc.getLocation(), enemy.location)) {
-						if (isDirLaunchable[curDir.ordinal()]) {
-							minDistSq = distSq;
-							bestDir = curDir;
-							curTarget = enemy.location;
-							break;
-						}
+					// we don't actually check all directions, just the straight direction
+					// if that's clogged, launching explosives might not be a smart idea
+					Direction dirToward = rc.getLocation().directionTo(enemy.location);
+					if (isDirLaunchable[dirToward.ordinal()]) {
+						minDistSq = distSq;
+						bestDir = dirToward;
+						curTarget = enemy.location;
+						break;
 					}
 				}
 			}
@@ -114,9 +116,9 @@ public class LauncherHandler extends BaseBuildingHandler {
 			if (bestDir == null) {
 				for (MapLocation enemyTower : getEnemyTowerLocations()) {
 					int distSq = enemyTower.distanceSquaredTo(rc.getLocation());
-					Direction curDir = rc.getLocation().directionTo(enemyTower);
-					if (rc.canLaunch(curDir)) {
-						if (distSq <= minDistSq) {
+					if (distSq <= minDistSq) {
+						Direction curDir = rc.getLocation().directionTo(enemyTower);
+						if (isDirLaunchable[curDir.ordinal()]) {
 							minDistSq = distSq;
 							bestDir = curDir;
 							curTarget = enemyTower;
@@ -127,9 +129,9 @@ public class LauncherHandler extends BaseBuildingHandler {
 			if (bestDir == null) {
 				MapLocation enemyHq = getEnemyHqLocation();
 				int distSq = enemyHq.distanceSquaredTo(rc.getLocation());
-				Direction curDir = rc.getLocation().directionTo(enemyHq);
-				if (rc.canLaunch(curDir)) {
-					if (distSq <= minDistSq) {
+				if (distSq <= minDistSq) {
+					Direction curDir = rc.getLocation().directionTo(enemyHq);
+					if (isDirLaunchable[curDir.ordinal()]) {
 						minDistSq = distSq;
 						bestDir = curDir;
 						curTarget = enemyHq;
@@ -143,7 +145,7 @@ public class LauncherHandler extends BaseBuildingHandler {
 			if (rc.isCoreReady()) {
 				BroadcastInterface.setLauncherTarget(rc, launcherIndex, enemyLoc);
 				for (Direction curDir : Util.getDirectionsStrictlyToward(enemyDir)) {
-					if (rc.canLaunch(curDir)) {
+					if (isDirLaunchable[curDir.ordinal()]) {
 						rc.launchMissile(curDir);
 					}
 				}

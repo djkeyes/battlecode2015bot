@@ -15,9 +15,6 @@ public class BarracksHandler extends BaseBuildingHandler {
 
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
-		int numTankFactories = BroadcastInterface.getRobotCount(rc, RobotType.TANKFACTORY, true);
-		int numTanks = BroadcastInterface.getRobotCount(rc, RobotType.TANK, true);
-
 		LinkedList<Action> result = new LinkedList<Action>();
 		if (curStrategy.shouldMakeSoldiers()) {
 			result.add(makeSoldier);

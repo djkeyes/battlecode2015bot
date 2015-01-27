@@ -3,8 +3,6 @@ package dronerush;
 import java.util.LinkedList;
 import java.util.List;
 
-import dronerush.BaseRobotHandler.Attack;
-import dronerush.BaseRobotHandler.MoveTowardEnemyHq;
 import battlecode.common.GameActionException;
 import battlecode.common.RobotController;
 
