@@ -1,6 +1,5 @@
 package dronerush;
 
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -26,8 +25,7 @@ public class HQHandler extends BaseBuildingHandler {
 
 		checkIfRotatedOrReflected();
 
-		checkIfDroneXml();
-
+		chooseStrategy();
 	}
 
 	private void atBeginningOfTurn() throws GameActionException {
@@ -144,15 +142,11 @@ public class HQHandler extends BaseBuildingHandler {
 		}
 	}
 
-	private void checkIfDroneXml(){
-		if(isDroneXml()){
-			System.out.println("drone.xml - don't make drones");
-		} else {
-			System.out.println("okay to make drones");
-		}
+	private void chooseStrategy() throws GameActionException {
+		Strategy.setStrategy(rc, isDroneXml());
+		curStrategy = Strategy.getStrategy(rc);
 	}
-	
-	
+
 	private boolean isDroneXml() {
 		// some maps are built specifically to deter early drones
 		// the initial towers (plus hq) all form a wall around some large area of the map.

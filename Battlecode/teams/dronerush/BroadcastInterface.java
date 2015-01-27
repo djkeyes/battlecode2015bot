@@ -41,6 +41,7 @@ public class BroadcastInterface {
 	// 64661: a boolean, whether there is a tower in peril
 	// 64662: coordinates of a tower in peril, if it exists
 	// 64663: number of enemies near tower in peril
+	// 64664: a number corrosponding to the current strategy
 
 	// is there a better/more efficient way to do this? we could use an enummap, but i think that's less efficient.
 	// alternatively, I think type.ordinal() might be useful?
@@ -381,6 +382,16 @@ public class BroadcastInterface {
 
 	private static boolean isTowerInPeril(RobotController rc) throws GameActionException {
 		return rc.readBroadcast(isTowerInPerilChannel) == 1;
+	}
+
+	private static final int strategyChannel = 64664;
+
+	public static void setStrategyValue(RobotController rc, int strategyValue) throws GameActionException {
+		rc.broadcast(strategyChannel, strategyValue);
+	}
+
+	public static int getStrategyValue(RobotController rc) throws GameActionException {
+		return rc.readBroadcast(strategyChannel);
 	}
 
 }

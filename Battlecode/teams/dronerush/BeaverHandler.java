@@ -39,60 +39,30 @@ public class BeaverHandler extends BaseRobotHandler {
 			return result;
 		}
 
-		int numMinerFactories = BroadcastInterface.getRobotCount(rc, RobotType.MINERFACTORY, true);
-		if (numMinerFactories < 1) {
+		switch (curStrategy.getBeaverBuildOrder()) {
+		case AEROSPACELAB:
+			result.add(buildAerospaceLab);
+			break;
+		case MINERFACTORY:
 			result.add(buildMinerFactory);
-			result.add(mine);
-			result.add(scout);
-			return result;
-		}
-		int numHelipads = BroadcastInterface.getRobotCount(rc, RobotType.HELIPAD, true);
-		if (numHelipads < 1) {
-			result.add(buildHelipad);
-			result.add(mine);
-			result.add(scout);
-			return result;
-		}
-		int numTechnologyInstitutes = BroadcastInterface.getRobotCount(rc, RobotType.TECHNOLOGYINSTITUTE, true);
-		if (numTechnologyInstitutes < 1) {
-			result.add(buildTechInstitute);
-			result.add(mine);
-			result.add(scout);
-			return result;
-		}
-		int numTrainingFields = BroadcastInterface.getRobotCount(rc, RobotType.TRAININGFIELD, true);
-		if (numTrainingFields < 1) {
-			result.add(buildTrainingField);
-			result.add(mine);
-			result.add(scout);
-			return result;
-		}
-		int numBarracks = BroadcastInterface.getRobotCount(rc, RobotType.BARRACKS, true);
-		if (numBarracks < 1) {
+			break;
+		case BARRACKS:
 			result.add(buildBarracks);
-			result.add(mine);
-			result.add(scout);
-			return result;
-		}
-		int numTankFactories = BroadcastInterface.getRobotCount(rc, RobotType.TANKFACTORY, true);
-		if (numTankFactories < 1) {
+			break;
+		case HELIPAD:
+			result.add(buildHelipad);
+			break;
+		case TRAININGFIELD:
+			result.add(buildTrainingField);
+			break;
+		case TECHNOLOGYINSTITUTE:
+			result.add(buildTechInstitute);
+			break;
+		case TANKFACTORY:
 			result.add(buildTankFactory);
-			result.add(mine);
-			result.add(scout);
-			return result;
-		}
-		int numAerospacelabs = BroadcastInterface.getRobotCount(rc, RobotType.AEROSPACELAB, true);
-		if (numAerospacelabs < 1) {
-			result.add(buildAerospaceLab);
-			result.add(mine);
-			result.add(scout);
-			return result;
-		}
-
-		if (Strategy.shouldMakeTanks(rc)) {
-			result.add(buildTankFactory);
-		} else {
-			result.add(buildAerospaceLab);
+			break;
+		default:
+			break;
 		}
 		result.add(mine);
 		result.add(scout);

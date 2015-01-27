@@ -22,7 +22,7 @@ public class BarracksHandler extends BaseBuildingHandler {
 		// bashers suck for early rush defense. their real purpose in life is dealing with clumps of launchers.
 		// so don't bother making them until we have some bulkier units out first.
 		if (numTankFactories >= 1 && numTanks >= 4) {
-			if (Strategy.shouldMakeBashers(rc)) {
+			if (curStrategy.shouldMakeBashers()) {
 				result.add(makeBasher);
 			}
 		}

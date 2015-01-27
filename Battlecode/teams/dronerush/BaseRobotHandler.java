@@ -66,10 +66,17 @@ public abstract class BaseRobotHandler {
 
 	protected RobotController rc;
 	protected Random gen;
+	protected Strategy curStrategy;
 
 	protected BaseRobotHandler(RobotController rc) {
 		this.rc = rc;
 		gen = new Random(rc.getID());
+
+		try {
+			// notably, if this is the HQ on round 0, the strategy won't be set yet.
+			curStrategy = Strategy.getStrategy(rc);
+		} catch (GameActionException e) {
+		}
 	}
 
 	public int maxBytecodesToUse() {
