@@ -91,6 +91,8 @@ public class BeaverHandler extends BaseRobotHandler {
 
 		if (Strategy.shouldMakeTanks(rc)) {
 			result.add(buildTankFactory);
+		} else if(Strategy.shouldMakeSoldiers(rc)){
+			result.add(buildBarracks);
 		} else {
 			result.add(buildAerospaceLab);
 		}
