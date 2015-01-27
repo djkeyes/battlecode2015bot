@@ -19,16 +19,15 @@ public class BarracksHandler extends BaseBuildingHandler {
 		int numTanks = BroadcastInterface.getRobotCount(rc, RobotType.TANK, true);
 
 		LinkedList<Action> result = new LinkedList<Action>();
-		// bashers suck for early rush defense. their real purpose in life is dealing with clumps of launchers.
-		// so don't bother making them until we have some bulkier units out first.
-		if (numTankFactories >= 1 && numTanks >= 4) {
-			if (curStrategy.shouldMakeBashers()) {
-				result.add(makeBasher);
-			}
+		if (curStrategy.shouldMakeSoldiers()) {
+			result.add(makeSoldier);
+		} else if (curStrategy.shouldMakeBashers()) {
+			result.add(makeBasher);
 		}
 		return result;
 	}
 
 	private final Action makeBasher = new SpawnUnit(RobotType.BASHER, true);
+	private final Action makeSoldier = new SpawnUnit(RobotType.SOLDIER, true);
 
 }

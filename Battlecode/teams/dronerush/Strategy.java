@@ -28,7 +28,7 @@ public abstract class Strategy {
 		case DRONE_RUSH_VALUE:
 			return new DroneRush(rc);
 		case SOLDIER_MASS_VALUE:
-			// return new SoldierMass(rc); // TODO
+			return new SoldierMass(rc); // TODO
 		default:
 			return new DroneRush(rc);
 		}
@@ -50,6 +50,10 @@ public abstract class Strategy {
 	public abstract boolean shouldMakeSoldiers() throws GameActionException;
 
 	public abstract boolean shouldMakeBashers() throws GameActionException;
+
+	public abstract boolean shouldMakeDrones() throws GameActionException;
+
+	public abstract boolean shouldAggroWithDrones() throws GameActionException;
 
 	public abstract RobotType getBeaverBuildOrder() throws GameActionException;
 
@@ -76,7 +80,12 @@ public abstract class Strategy {
 		}
 
 		public boolean shouldMakeBashers() throws GameActionException {
-			return (BroadcastInterface.getRobotCount(rc, RobotType.BASHER, true) < MAX_NUMBER_OF_BASHERS);
+			// bashers suck for early rush defense. their real purpose in life is dealing with clumps of launchers.
+			// so don't bother making them until we have some bulkier units out first.
+			int numTankFactories = BroadcastInterface.getRobotCount(rc, RobotType.TANKFACTORY, true);
+			int numTanks = BroadcastInterface.getRobotCount(rc, RobotType.TANK, true);
+			return numTankFactories >= 1 && numTanks >= 4
+					&& BroadcastInterface.getRobotCount(rc, RobotType.BASHER, true) < MAX_NUMBER_OF_BASHERS;
 		}
 
 		@Override
@@ -121,5 +130,105 @@ public abstract class Strategy {
 				return RobotType.AEROSPACELAB;
 			}
 		}
+
+		@Override
+		public boolean shouldMakeDrones() throws GameActionException {
+			return BroadcastInterface.getRobotCount(rc, RobotType.DRONE, true) < 9;
+		}
+
+		@Override
+		public boolean shouldAggroWithDrones() throws GameActionException {
+			return true;
+		}
+	}
+
+	public static class SoldierMass extends Strategy {
+		private static final double TANKS_PER_LAUNCHER = 1.5;
+		private static final double SOLDIERS_PER_TANK = 2.5;
+
+		public SoldierMass(RobotController rc) {
+			super(rc);
+		}
+
+		@Override
+		public boolean shouldMakeTanks() throws GameActionException {
+			int tankCount = BroadcastInterface.getRobotCount(rc, RobotType.TANK, true);
+			int launcherCount = BroadcastInterface.getRobotCount(rc, RobotType.LAUNCHER, true);
+			int soldierCount = BroadcastInterface.getRobotCount(rc, RobotType.SOLDIER, true);
+			// > vs >= doesn't really matter here. what matters is that AT LEAST one of shouldMakeTanks and shouldMakeLaunchers always
+			// returns true. so don't let both of them be >.
+			return tankCount <= TANKS_PER_LAUNCHER * launcherCount && soldierCount >= SOLDIERS_PER_TANK * tankCount;
+		}
+
+		@Override
+		public boolean shouldMakeLaunchers() throws GameActionException {
+			int tankCount = BroadcastInterface.getRobotCount(rc, RobotType.TANK, true);
+			int launcherCount = BroadcastInterface.getRobotCount(rc, RobotType.LAUNCHER, true);
+			return tankCount >= TANKS_PER_LAUNCHER * launcherCount;
+		}
+
+		@Override
+		public boolean shouldMakeSoldiers() throws GameActionException {
+			int tankCount = BroadcastInterface.getRobotCount(rc, RobotType.TANK, true);
+			int soldierCount = BroadcastInterface.getRobotCount(rc, RobotType.SOLDIER, true);
+
+			return soldierCount <= SOLDIERS_PER_TANK * tankCount;
+		}
+
+		@Override
+		public boolean shouldMakeBashers() throws GameActionException {
+			return false;
+		}
+
+		@Override
+		public RobotType getBeaverBuildOrder() throws GameActionException {
+			int numMinerFactories = BroadcastInterface.getRobotCount(rc, RobotType.MINERFACTORY, true);
+			if (numMinerFactories < 1) {
+				return RobotType.MINERFACTORY;
+			}
+			int numBarracks = BroadcastInterface.getRobotCount(rc, RobotType.BARRACKS, true);
+			if (numBarracks < 1) {
+				return RobotType.BARRACKS;
+			}
+			int numTankFactories = BroadcastInterface.getRobotCount(rc, RobotType.TANKFACTORY, true);
+			if (numTankFactories < 1) {
+				return RobotType.TANKFACTORY;
+			}
+			int numHelipads = BroadcastInterface.getRobotCount(rc, RobotType.HELIPAD, true);
+			if (numHelipads < 1) {
+				return RobotType.HELIPAD;
+			}
+			int numAerospacelabs = BroadcastInterface.getRobotCount(rc, RobotType.AEROSPACELAB, true);
+			if (numAerospacelabs < 1) {
+				return RobotType.AEROSPACELAB;
+			}
+			int numTechnologyInstitutes = BroadcastInterface.getRobotCount(rc, RobotType.TECHNOLOGYINSTITUTE, true);
+			if (numTechnologyInstitutes < 1) {
+				return RobotType.TECHNOLOGYINSTITUTE;
+			}
+			int numTrainingFields = BroadcastInterface.getRobotCount(rc, RobotType.TRAININGFIELD, true);
+			if (numTrainingFields < 1) {
+				return RobotType.TRAININGFIELD;
+			}
+
+			if (shouldMakeTanks()) {
+				return RobotType.TANKFACTORY;
+			} else if (shouldMakeSoldiers()) {
+				return RobotType.BARRACKS;
+			} else {
+				return RobotType.AEROSPACELAB;
+			}
+		}
+
+		@Override
+		public boolean shouldMakeDrones() throws GameActionException {
+			return BroadcastInterface.getRobotCount(rc, RobotType.DRONE, true) < 6;
+		}
+
+		@Override
+		public boolean shouldAggroWithDrones() throws GameActionException {
+			return false;
+		}
+
 	}
 }

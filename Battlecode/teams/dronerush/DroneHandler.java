@@ -13,10 +13,15 @@ import battlecode.common.RobotInfo;
 
 public class DroneHandler extends BaseRobotHandler {
 
-	boolean isSupplyCourier = false;
+	boolean isSupplyCourier;
 
 	protected DroneHandler(RobotController rc) {
 		super(rc);
+
+		try {
+			isSupplyCourier = !curStrategy.shouldAggroWithDrones();
+		} catch (GameActionException e) {
+		}
 	}
 
 	@Override

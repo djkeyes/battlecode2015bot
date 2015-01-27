@@ -143,7 +143,7 @@ public class HQHandler extends BaseBuildingHandler {
 	}
 
 	private void chooseStrategy() throws GameActionException {
-		Strategy.setStrategy(rc, isDroneXml());
+		Strategy.setStrategy(rc, !isDroneXml());
 		curStrategy = Strategy.getStrategy(rc);
 	}
 

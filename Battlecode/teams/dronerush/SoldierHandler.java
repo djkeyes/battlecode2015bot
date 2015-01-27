@@ -15,20 +15,19 @@ public class SoldierHandler extends BaseRobotHandler {
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
 		LinkedList<Action> result = new LinkedList<Action>();
-		result.add(attack);
-		// defending is weird. it doesn't make sense to stay in one place, but it doesn't make sense to move far away either. as a
-		// happy medium, do on a coin flip.
-		if (BroadcastInterface.readAttackMode(rc) || gen.nextDouble() < 0.5) {
+
+		// until the attack bit is set, just hang around at home
+		if (BroadcastInterface.readAttackMode(rc)) {
+			result.add(attackMaxDps);
 			result.add(advance);
-			result.add(scout);
 		} else {
-			result.add(retreat);
+			result.add(attackMaxDps);
+			result.add(defend);
 		}
 		return result;
 	}
 
-	private final Action attack = new Attack();
-	private final Action scout = new ScoutOutward();
-	private final Action advance = new MoveTowardEnemyHq(true, true);
-	private final Action retreat = new Retreat();
+	private final Action attackMaxDps = new AttackCautiously(false);
+	private final Action advance = new MoveTowardEnemyHq(false, false);
+	private final Action defend = new Defend();
 }
