@@ -16,7 +16,7 @@ public class AerospaceLabHandler extends BaseBuildingHandler {
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
 		LinkedList<Action> result = new LinkedList<Action>();
-		if (curStrategy.shouldMakeLaunchers()) {
+		if (curStrategy.shouldMakeLaunchers() || rc.getTeamOre() > 1000) {
 			result.add(makeLauncher);
 		}
 		return result;

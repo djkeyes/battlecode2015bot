@@ -16,7 +16,7 @@ public class BarracksHandler extends BaseBuildingHandler {
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
 		LinkedList<Action> result = new LinkedList<Action>();
-		if (curStrategy.shouldMakeSoldiers()) {
+		if (curStrategy.shouldMakeSoldiers() || rc.getTeamOre() > 1000) {
 			result.add(makeSoldier);
 		} else if (curStrategy.shouldMakeBashers()) {
 			result.add(makeBasher);

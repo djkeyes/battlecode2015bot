@@ -96,7 +96,7 @@ public class HQHandler extends BaseBuildingHandler {
 
 		LinkedList<Action> result = new LinkedList<Action>();
 		result.add(attack);
-		if (BroadcastInterface.getRobotCount(rc, RobotType.BEAVER, true) < 2) {
+		if (BroadcastInterface.getRobotCount(rc, RobotType.BEAVER, true) < 2 || rc.getTeamOre() > 1500) {
 			result.add(makeBeavers);
 		}
 		return result;
