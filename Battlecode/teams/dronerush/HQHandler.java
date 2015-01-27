@@ -1,5 +1,6 @@
 package dronerush;
 
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -24,6 +25,9 @@ public class HQHandler extends BaseBuildingHandler {
 		BroadcastInterface.enqueuePathfindingQueue(rc, rc.getLocation().x, rc.getLocation().y);
 
 		checkIfRotatedOrReflected();
+
+		checkIfDroneXml();
+
 	}
 
 	private void atBeginningOfTurn() throws GameActionException {
@@ -36,7 +40,7 @@ public class HQHandler extends BaseBuildingHandler {
 		determineShouldPullTheBoys();
 
 		BroadcastInterface.resetAbundantOre(rc);
-		
+
 		BroadcastInterface.resetTowerInPeril(rc);
 	}
 
@@ -105,8 +109,7 @@ public class HQHandler extends BaseBuildingHandler {
 		boolean isHorizontalReflection = Util.checkIsHorizontalReflection(midpoint, ourHq, theirHq, ourTowers, theirTowers);
 		// BOTH diagonals
 		boolean isDiagonalReflection = Util.checkIsDiagonalReflection(midpoint, ourHq, theirHq, ourTowers, theirTowers);
-		boolean isReverseDiagonalReflection = Util.checkIsReverseDiagonalReflection(midpoint, ourHq, theirHq, ourTowers,
-				theirTowers);
+		boolean isReverseDiagonalReflection = Util.checkIsReverseDiagonalReflection(midpoint, ourHq, theirHq, ourTowers, theirTowers);
 		boolean isRotation = Util.checkIsRotation(midpoint, ourHq, theirHq, ourTowers, theirTowers);
 		BroadcastInterface.setMapConfiguration(rc, midpoint, Util.encodeMapConfigurationAsBitmask(isVerticalReflection,
 				isHorizontalReflection, isDiagonalReflection, isReverseDiagonalReflection, isRotation));
@@ -139,6 +142,109 @@ public class HQHandler extends BaseBuildingHandler {
 				BroadcastInterface.setAttackMode(rc, true);
 			}
 		}
+	}
+
+	private void checkIfDroneXml(){
+		if(isDroneXml()){
+			System.out.println("drone.xml - don't make drones");
+		} else {
+			System.out.println("okay to make drones");
+		}
+	}
+	
+	
+	private boolean isDroneXml() {
+		// some maps are built specifically to deter early drones
+		// the initial towers (plus hq) all form a wall around some large area of the map.
+		// fortunately, we can detect this ahead of time
+		// the basic condition is:
+		// consider the set of all towers, and also the set of all towers AND the hq
+		// if one of those sets is connected, without being a clique, then it's probably an anti-drone map
+		MapLocation[] ourTowers = getOurTowerLocations();
+		if (ourTowers.length <= 1) {
+			return false;
+		}
+		MapLocation ourHq = getOurHqLocation();
+		// these radii are only sort of correct. adding integer radiuses is weird.
+		int interTowerDist = 97;
+		int hqTowerDist;
+		if (ourTowers.length >= 5) {
+			hqTowerDist = 157;
+		} else {
+			hqTowerDist = 125;
+		}
+
+		boolean isHqAndTowerClique = true;
+		boolean isTowerClique = true;
+		boolean[][] adjMat = new boolean[ourTowers.length + 1][ourTowers.length + 1];
+		for (int i = 0; i < ourTowers.length; i++) {
+			adjMat[0][i + 1] = adjMat[i + 1][0] = ourHq.distanceSquaredTo(ourTowers[i]) < hqTowerDist;
+			if (!adjMat[0][i + 1]) {
+				isHqAndTowerClique = false;
+			}
+		}
+		for (int i = 0; i < ourTowers.length; i++) {
+			for (int j = 0; j < i; j++) {
+				adjMat[j + 1][i + 1] = adjMat[i + 1][j + 1] = ourTowers[i].distanceSquaredTo(ourTowers[j]) < interTowerDist;
+				if (!adjMat[j + 1][i + 1]) {
+					isHqAndTowerClique = false;
+					isTowerClique = false;
+				}
+			}
+		}
+
+		if (!isTowerClique) {
+			boolean[] reachable = new boolean[ourTowers.length];
+			LinkedList<Integer> queue = new LinkedList<>();
+			queue.add(1);
+			reachable[0] = true;
+			while (!queue.isEmpty()) {
+				int cur = queue.removeFirst();
+				for (int i = 1; i < reachable.length + 1; i++) {
+					if (!reachable[i - 1] && adjMat[i][cur]) {
+						reachable[i - 1] = true;
+						queue.add(i);
+					}
+				}
+			}
+			boolean hasAnyUnreachable = false;
+			for (boolean towerReached : reachable) {
+				if (!towerReached) {
+					hasAnyUnreachable = true;
+					break;
+				}
+			}
+			if (!hasAnyUnreachable) {
+				return true;
+			}
+		}
+		if (!isHqAndTowerClique) {
+			boolean[] reachable = new boolean[ourTowers.length + 1];
+			LinkedList<Integer> queue = new LinkedList<>();
+			queue.add(0);
+			reachable[0] = true;
+			while (!queue.isEmpty()) {
+				int cur = queue.removeFirst();
+				for (int i = 0; i < reachable.length; i++) {
+					if (!reachable[i] && adjMat[i][cur]) {
+						reachable[i] = true;
+						queue.add(i);
+					}
+				}
+			}
+			boolean hasAnyUnreachable = false;
+			for (boolean towerReached : reachable) {
+				if (!towerReached) {
+					hasAnyUnreachable = true;
+					break;
+				}
+			}
+			if (!hasAnyUnreachable) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	// it turns out EnumMaps really suck. they cost like 5x more bytecodes.
