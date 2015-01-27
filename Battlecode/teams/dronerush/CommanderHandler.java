@@ -51,7 +51,7 @@ public class CommanderHandler extends BaseRobotHandler {
 	private final Action attack = new Attack();
 	private final Action retreat = new Retreat();
 	private final Action retreatWithFlash = new RetreatWithFlash();
-	private final Action scout = new ScoutOutward();
+	private final Action scout = new ScoutOutward(true, false);
 	private final Action rush = new MoveTo(getEnemyHqLocation(), true, false);
 	private final Action charge = new MoveTowardEnemyHq(false, false);
 	private final Action useHeavyHands = new HeavyHands();

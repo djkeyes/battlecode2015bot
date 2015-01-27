@@ -13,7 +13,7 @@ public class MinerHandler extends BaseRobotHandler {
 	}
 
 	private final Action mine = new Mine(/* isBeaver= */false);
-	private final Action scout = new ScoutOutward();
+	private final Action scout = new ScoutOutward(true, true);
 	private final Action attack = new Attack();
 	private final Action advance = new MoveTowardEnemyHq(false, false);
 

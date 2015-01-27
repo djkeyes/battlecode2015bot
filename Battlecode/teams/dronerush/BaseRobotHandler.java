@@ -355,6 +355,14 @@ public abstract class BaseRobotHandler {
 	// this is implemented by simple moving further away from the HQ--however, this means we can get stuck.
 	// to counteract this, we move randomly for a number of turns, but that's obvious sub-optimal
 	public class ScoutOutward implements Action {
+		private boolean avoidEnemyTowers;
+		private boolean avoidEnemyUnits;
+
+		public ScoutOutward(boolean avoidEnemyTowers, boolean avoidEnemyUnits) {
+			this.avoidEnemyTowers = avoidEnemyTowers;
+			this.avoidEnemyUnits = avoidEnemyUnits;
+		}
+
 		private int turnsToRandomize = 0;
 		private final int turnsToRandomizeIncrement = 10;
 
@@ -373,15 +381,23 @@ public abstract class BaseRobotHandler {
 					turnsToRandomize--;
 					return false;
 				} else {
+					RobotInfo[] nearbyEnemies = null;
+					if (avoidEnemyUnits) {
+						nearbyEnemies = getNearbyEnemies();
+					}
 					int maxDist = getDistanceFromOurHq(rc.getLocation());
 					Direction nextDir = null;
 					for (Direction adjDir : Util.getRandomDirectionOrdering(gen)) {
 						MapLocation adjLoc = rc.getLocation().add(adjDir);
 						if (rc.canMove(adjDir)) {
-							int adjDist = getDistanceFromOurHq(adjLoc);
-							if (adjDist > maxDist) {
-								maxDist = adjDist;
-								nextDir = adjDir;
+							if (!avoidEnemyTowers || inEnemyHqOrTowerRange(adjLoc)) {
+								if (!avoidEnemyUnits || inEnemyRange(adjLoc, nearbyEnemies)) {
+									int adjDist = getDistanceFromOurHq(adjLoc);
+									if (adjDist > maxDist) {
+										maxDist = adjDist;
+										nextDir = adjDir;
+									}
+								}
 							}
 						}
 					}

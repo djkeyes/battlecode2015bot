@@ -81,7 +81,7 @@ public class BeaverHandler extends BaseRobotHandler {
 	private final Action buildHandwashStation = new BuildBuilding(RobotType.HANDWASHSTATION);
 	private final Action buildMinerFactory = new BuildBuilding(RobotType.MINERFACTORY);
 	private final Action mine = new Mine(/* isBeaver= */true);
-	private final Action scout = new ScoutOutward();
+	private final Action scout = new ScoutOutward(true, true);
 	private final Action attack = new Attack();
 
 	private class BuildBuilding implements Action {

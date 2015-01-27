@@ -33,7 +33,7 @@ public class DroneHandler extends BaseRobotHandler {
 		// otherwise, don't retreat unless we're not making progress
 		if (!isSupplyCourier) {
 			int roundNum = Clock.getRoundNum();
-			isSupplyCourier = (roundNum > 1200 || (roundNum > 1000 && !attackWithStats.shouldContinueAttacking()));
+			isSupplyCourier = (roundNum > 1200 || (roundNum > 500 && !attackWithStats.shouldContinueAttacking()));
 		}
 
 		if (isSupplyCourier) {
