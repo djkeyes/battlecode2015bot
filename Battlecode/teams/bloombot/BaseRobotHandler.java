@@ -12,7 +12,6 @@ import battlecode.common.RobotController;
 import battlecode.common.RobotInfo;
 import battlecode.common.RobotType;
 import battlecode.common.TerrainTile;
-import bloombot.Util.MapConfiguration;
 
 public abstract class BaseRobotHandler {
 
@@ -410,6 +409,25 @@ public abstract class BaseRobotHandler {
 		}
 	}
 
+	public class MoveToFrontier implements Action {
+
+		@Override
+		public boolean run() throws GameActionException {
+			// get the movement direction recommended for the current tile
+			Direction recommendedDir = BroadcastInterface.getScoutingDirection(rc);
+			if(recommendedDir != null){
+				for(Direction d : Util.getDirectionsStrictlyToward(recommendedDir)){
+					if(rc.canMove(d)){
+						rc.move(d);
+						break;
+					}
+				}
+			}
+			// TODO: if we haven't calculated that yet, just move away from the hq or something smart
+			return false;
+		}
+	}
+	
 	public class MoveTo implements Action {
 		private boolean avoidTowers;
 		private boolean avoidEnemiesAndTowers;
@@ -795,86 +813,8 @@ public abstract class BaseRobotHandler {
 		}
 	}
 
-	// this "defends" by randomly traveling between our towers
-	// TODO: also defend our miners and production buildings, or gather near where enemies are
-	public class Defend implements Action {
-
-		private boolean isTravelingToTower = false;
-		private MapLocation target;
-		private MoveTo curAction;
-		private MapLocation[] possibleTargets;
-		private MoveTo[] possibleTargetActions;
-		private boolean isRespondingToDistressSignal = false;
-
-		public Defend() {
-			resetTargetActions();
-
-			// this should never change
-			possibleTargets[0] = getOurHqLocation();
-			// TODO: this should really be a retreat action, using BFS results
-			possibleTargetActions[0] = new MoveTo(possibleTargets[0], true, false);
-		}
-
-		private void resetTargetActions() {
-			MapLocation[] towers = getOurTowerLocations();
-			// we can re-use the hq stuff
-			MapLocation hq = null;
-			MoveTo hqAction = null;
-			if (possibleTargetActions != null) {
-				hq = possibleTargets[0];
-				hqAction = possibleTargetActions[0];
-			}
-
-			possibleTargets = new MapLocation[1 + towers.length];
-			possibleTargetActions = new MoveTo[1 + towers.length];
-
-			possibleTargets[0] = hq;
-			possibleTargetActions[0] = hqAction;
-
-			for (int i = 0; i < towers.length; i++) {
-				possibleTargets[i + 1] = towers[i];
-				possibleTargetActions[i + 1] = new MoveTo(possibleTargets[i + 1], true, false);
-			}
-		}
-
-		@Override
-		public boolean run() throws GameActionException {
-			MapLocation towerInPeril = BroadcastInterface.getTowerInPeril(rc);
-
-			// if we've reached our location, OR if we're not going anywhere important and a tower is startled
-			if ((!isRespondingToDistressSignal && towerInPeril != null) || !isTravelingToTower) {
-				// first check if any towers are requesting help
-				// if not, just pick randomly from the current towers
-				if (towerInPeril != null) {
-					target = towerInPeril;
-					curAction = new MoveTo(towerInPeril, true, false);
-					isRespondingToDistressSignal = true;
-				} else {
-					// first, check if we've lost a tower.
-					int numTowers = getOurTowerLocations().length;
-					if (possibleTargetActions.length != numTowers + 1) {
-						resetTargetActions();
-					}
-					// pick a target
-					int index = gen.nextInt(numTowers + 1);
-					target = possibleTargets[index];
-					curAction = possibleTargetActions[index];
-					isRespondingToDistressSignal = false;
-				}
-				isTravelingToTower = true;
-			}
-
-			boolean result = curAction.run();
-
-			if (rc.getLocation().distanceSquaredTo(target) <= 8) {
-				isTravelingToTower = false;
-			}
-
-			return result;
-		}
-	}
-
 	public class AttackInAWave implements Action {
+		// TODO: this needs to be totally reworked for bloombot.
 		private MapLocation target = null;
 		private Action curAction;
 		private boolean avoidingTowers = false;
@@ -1126,11 +1066,4 @@ public abstract class BaseRobotHandler {
 	}
 
 	private MapLocation cachedEnemyHqLocation = null;
-
-	// at the end of the game, everyone should attack.
-	// miners included.
-	// (but no beavers, they have handwash stations to build
-	public boolean shouldPullTheBoys() throws GameActionException {
-		return BroadcastInterface.readPullBoysMode(rc);
-	}
 }

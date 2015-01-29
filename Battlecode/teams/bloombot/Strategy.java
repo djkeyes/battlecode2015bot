@@ -14,14 +14,8 @@ public abstract class Strategy {
 		this.rc = rc;
 	}
 
-	private static final int LAUNCH_AND_SCOUT_VALUE = 0;
-
 	public static Strategy getStrategy(RobotController rc) throws GameActionException {
 		return new LaunchAndScout(rc);
-	}
-
-	public static void setStrategy(RobotController rc) throws GameActionException {
-		BroadcastInterface.setStrategyValue(rc, LAUNCH_AND_SCOUT_VALUE);
 	}
 
 	public abstract boolean shouldMakeTanks() throws GameActionException;

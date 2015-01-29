@@ -14,20 +14,14 @@ public class MinerHandler extends BaseRobotHandler {
 
 	private final Action mine = new Mine(/* isBeaver= */false);
 	private final Action attack = new Attack();
-	private final Action advance = new MoveTowardEnemyHq(false, false);
-	private final Action scoutTowardOpponent = new MoveTo(getEnemyHqLocation(), true, true);
+	private final Action scoutTowardOpponent = new MoveToFrontier();
 
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
 		LinkedList<Action> result = new LinkedList<Action>();
-		if (shouldPullTheBoys()) {
-			result.add(attack);
-			result.add(advance);
-		} else {
-			result.add(attack);
-			result.add(mine);
-			result.add(scoutTowardOpponent);
-		}
+		result.add(attack);
+		result.add(mine);
+		result.add(scoutTowardOpponent);
 		return result;
 	}
 

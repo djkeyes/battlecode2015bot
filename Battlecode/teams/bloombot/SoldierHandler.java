@@ -16,17 +16,22 @@ public class SoldierHandler extends BaseRobotHandler {
 	public List<Action> chooseActions() throws GameActionException {
 		LinkedList<Action> result = new LinkedList<Action>();
 
-		// until the attack bit is set, scout toward the opponent
-		if (BroadcastInterface.readAttackMode(rc)) {
+		result.add(attackMaxDps);
+
+		// until we have bfs results, scout toward the opponent
+		if (BroadcastInterface.findDirectionToHq(rc) != null) {
+			// once the results are in through, head over
+			// if there's a tower in the way, bunch up before advancing
+			// TODO: this calls BroadcastInterface.findDirectionToHq(rc) twice, which is like 50 unneeded bytecodes
 			result.add(attackInAWave);
 		} else {
 			result.add(attackMaxDps);
-			result.add(advance);
+			result.add(scout);
 		}
 		return result;
 	}
 
 	private final Action attackMaxDps = new AttackCautiously(false);
 	private final Action attackInAWave = new AttackInAWave();
-	private final Action advance = new MoveTo(getEnemyHqLocation(), true, true);
+	private final Action scout = new MoveToFrontier();
 }

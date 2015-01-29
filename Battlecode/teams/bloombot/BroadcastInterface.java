@@ -3,6 +3,7 @@ package bloombot;
 import java.util.LinkedList;
 
 import battlecode.common.Clock;
+import battlecode.common.Direction;
 import battlecode.common.GameActionException;
 import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
@@ -23,9 +24,9 @@ public class BroadcastInterface {
 	// 0-20: number of each robot
 	// 21-57620: distance to opponent HQ of each map tile--maybe we should also have distance from our HQ?
 	// 58625: attack/retreat signal
-	// 58626: bitmask containing which configuration the map is in (reflection, rotation, etc)
-	// 58627: x midpoint of the map
-	// 58628: y midpoint of the map
+	// 58626: 
+	// 58627: 
+	// 58628: 
 	// 58629: pathfinding queue head address
 	// 58630: pathfinding queue tail address
 	// 58631: pathfinding queue current size
@@ -37,12 +38,12 @@ public class BroadcastInterface {
 	// 61636: supply queue current size
 	// 61637-64637: supply queue
 	// 64638: build more supply depots signal
-	// 64639: "pull the boys" and all attack signal
+	// 64639: 
 	// 64640-64660: number of each enemy robot
-	// 64661: a boolean, whether there is a tower in peril
-	// 64662: coordinates of a tower in peril, if it exists
-	// 64663: number of enemies near tower in peril
-	// 64664: a number corrosponding to the current strategy
+	// 64661: 
+	// 64662: 
+	// 64663: 
+	// 64664:
 	// 64665-65264: a list of launchers and the enemies they are targeting
 	// 65265: a map location of the next tower/hq to go to
 	// 65266: a flag of whether to move into tower range
@@ -166,6 +167,20 @@ public class BroadcastInterface {
 	// TODO: if we could buffer and dequeue things several at a time, it would probably save us some bytecodes
 	// note: daniel tried doing this for enqueuing, but the cost of the linked list hardly made it worth it
 	// by reducing the number of broadcasts needed for head updates
+
+
+	public static Object findDirectionToHq(RobotController rc) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public static Direction getScoutingDirection(RobotController rc) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	
+	
 	public static int[] dequeuePathfindingQueue(RobotController rc) throws GameActionException {
 		int size = rc.readBroadcast(pfqSizeAddr);
 		if (size > 0) {
@@ -311,70 +326,6 @@ public class BroadcastInterface {
 
 	public static void setBuildMoreSupplyDepots(RobotController rc, boolean shouldBuildMore) throws GameActionException {
 		rc.broadcast(moreSupplyDepotChannel, shouldBuildMore ? 1 : 0);
-	}
-
-	private static final int boysChannel = 64639;
-
-	public static boolean readPullBoysMode(RobotController rc) throws GameActionException {
-		return rc.readBroadcast(boysChannel) == 1;
-	}
-
-	public static void setPullBoysMode(RobotController rc, boolean shouldPull) throws GameActionException {
-		if (shouldPull) {
-			rc.broadcast(boysChannel, 1);
-		} else {
-			rc.broadcast(boysChannel, 0);
-		}
-	}
-
-	// 64661: a boolean, whether there is a tower in peril
-	// 64662: coordinates of a tower in peril, if it exists
-	// 64663: number of enemies near tower in peril
-	private static final int isTowerInPerilChannel = 64661;
-	private static final int towerInPerilChannelChannel = 64662;
-	private static final int numEnemiesNearTowerInPerilChannel = 64663;
-
-	public static void resetTowerInPeril(RobotController rc) throws GameActionException {
-		rc.broadcast(isTowerInPerilChannel, 0);
-		rc.broadcast(numEnemiesNearTowerInPerilChannel, 0);
-	}
-
-	public static int getNumEnemiesNearTowerInPeril(RobotController rc) throws GameActionException {
-		return rc.readBroadcast(numEnemiesNearTowerInPerilChannel);
-	}
-
-	public static MapLocation getTowerInPeril(RobotController rc) throws GameActionException {
-		if (!isTowerInPeril(rc)) {
-			return null;
-		}
-		int combined = rc.readBroadcast(towerInPerilChannelChannel);
-		int x = (combined >> 16);
-		int y = (short) (0xFFFF & combined);
-		return new MapLocation(x, y);
-	}
-
-	public static void reportTowerInPeril(RobotController rc, int numEnemies, MapLocation location) throws GameActionException {
-		if (!isTowerInPeril(rc)) {
-			rc.broadcast(isTowerInPerilChannel, 1);
-		}
-
-		int combined = (location.x << 16) | (0xFFFF & location.y);
-		rc.broadcast(towerInPerilChannelChannel, combined);
-		rc.broadcast(numEnemiesNearTowerInPerilChannel, numEnemies);
-	}
-
-	private static boolean isTowerInPeril(RobotController rc) throws GameActionException {
-		return rc.readBroadcast(isTowerInPerilChannel) == 1;
-	}
-
-	private static final int strategyChannel = 64664;
-
-	public static void setStrategyValue(RobotController rc, int strategyValue) throws GameActionException {
-		rc.broadcast(strategyChannel, strategyValue);
-	}
-
-	public static int getStrategyValue(RobotController rc) throws GameActionException {
-		return rc.readBroadcast(strategyChannel);
 	}
 
 	// 64665-65264: a list of launchers and the enemies they are targeting

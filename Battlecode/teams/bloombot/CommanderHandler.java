@@ -35,13 +35,6 @@ public class CommanderHandler extends BaseRobotHandler {
 			result.add(useHeavyHands);
 		}
 
-		if (shouldPullTheBoys()) {
-			result.add(attack);
-			result.add(charge);
-			result.add(scout);
-			return result;
-		}
-
 		result.add(attack);
 		result.add(rush);
 		result.add(scout);
@@ -53,7 +46,6 @@ public class CommanderHandler extends BaseRobotHandler {
 	private final Action retreatWithFlash = new RetreatWithFlash();
 	private final Action scout = new ScoutOutward(true, false);
 	private final Action rush = new MoveTo(getEnemyHqLocation(), true, false);
-	private final Action charge = new MoveTowardEnemyHq(false, false);
 	private final Action useHeavyHands = new HeavyHands();
 
 	private class HeavyHands implements Action {

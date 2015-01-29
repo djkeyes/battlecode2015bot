@@ -3,7 +3,6 @@ package bloombot;
 import java.util.LinkedList;
 import java.util.List;
 
-import battlecode.common.Clock;
 import battlecode.common.GameActionException;
 import battlecode.common.GameConstants;
 import battlecode.common.MapLocation;
@@ -22,11 +21,6 @@ public class HQHandler extends BaseBuildingHandler {
 		// seed the distances for pathfinding
 		BroadcastInterface.setDistance(rc, rc.getLocation().x, rc.getLocation().y, 1, rc.getLocation());
 		BroadcastInterface.enqueuePathfindingQueue(rc, rc.getLocation().x, rc.getLocation().y);
-
-		// bloomberg maps don't have symmetry =/
-		// checkIfRotatedOrReflected();
-
-		chooseStrategy();
 	}
 
 	private void atBeginningOfTurn() throws GameActionException {
@@ -36,11 +30,8 @@ public class HQHandler extends BaseBuildingHandler {
 		countUnitsAndCheckSupply();
 
 		determineAttackSignal();
-		determineShouldPullTheBoys();
 
 		BroadcastInterface.resetAbundantOre(rc);
-
-		BroadcastInterface.resetTowerInPeril(rc);
 
 		calculateAdvancementTactics();
 	}
@@ -119,37 +110,16 @@ public class HQHandler extends BaseBuildingHandler {
 
 	private void determineAttackSignal() throws GameActionException {
 		boolean isSet = BroadcastInterface.readAttackMode(rc);
-		boolean isTimeToPullTheBoys = shouldPullTheBoys();
 		if (isSet) {
-			if (curStrategy.shouldWithdraw() && !isTimeToPullTheBoys) {
+			if (curStrategy.shouldWithdraw()) {
 				BroadcastInterface.setAttackMode(rc, false);
 			}
 
 		} else {
-			if (curStrategy.shouldAttack() || isTimeToPullTheBoys) {
+			if (curStrategy.shouldAttack()) {
 				BroadcastInterface.setAttackMode(rc, true);
 			}
 		}
-	}
-
-	private void determineShouldPullTheBoys() throws GameActionException {
-		boolean isSet = BroadcastInterface.readPullBoysMode(rc);
-		if (!isSet) {
-			// also factor in time to reach opponent
-			int bfsDist = getDistanceFromEnemyHq(getOurHqLocation());
-			int euclidianDist = (int) Math.sqrt(getOurHqLocation().distanceSquaredTo(getEnemyHqLocation()));
-			// the 3 here is to factor in movement delay. most units cost 2 when supplied.
-			int maxDist = 2 * Math.max(bfsDist, euclidianDist);
-
-			if (rc.getRoundLimit() - Clock.getRoundNum() < 200 + maxDist) {
-				BroadcastInterface.setPullBoysMode(rc, true);
-			}
-		}
-	}
-
-	private void chooseStrategy() throws GameActionException {
-		Strategy.setStrategy(rc);
-		curStrategy = Strategy.getStrategy(rc);
 	}
 
 	// it turns out EnumMaps really suck. they cost like 5x more bytecodes.

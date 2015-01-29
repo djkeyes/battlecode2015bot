@@ -17,19 +17,10 @@ public class BasherHandler extends BaseRobotHandler {
 	@Override
 	public List<Action> chooseActions() throws GameActionException {
 		LinkedList<Action> result = new LinkedList<Action>();
-		result.add(basherAttack);
-		// until the attack bit is set, just hang around at home
-		if (BroadcastInterface.readAttackMode(rc)) {
-			result.add(advance);
-		} else {
-			result.add(defend);
-		}
 		return result;
 	}
 
 	private final Action basherAttack = new BasherAttack();
-	private final Action advance = new AttackInAWave();
-	private final Action defend = new Defend();
 
 	public class BasherAttack implements Action {
 		private final int BASHER_ENEMY_SEARCH_RANGE_SQ = 9;
