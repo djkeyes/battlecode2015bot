@@ -3,9 +3,7 @@ package dronerush;
 import java.util.LinkedList;
 import java.util.List;
 
-import dronerush.BaseRobotHandler.MoveTowardEnemyHq;
 import battlecode.common.GameActionException;
-import battlecode.common.MapLocation;
 import battlecode.common.RobotController;
 
 public class TankHandler extends BaseRobotHandler {
