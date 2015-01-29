@@ -200,6 +200,7 @@ public abstract class BaseRobotHandler {
 
 	// return true if there was a transfer
 	protected boolean distributeSupply() throws GameActionException {
+
 		// if there are a lot of nearby allies, we might run out of bytecodes.
 		// invoking transferSupplies() costs us 500 bytecodes (it's really expensive!)
 		if (!hasTimeToTransferSupply()) {
@@ -246,7 +247,8 @@ public abstract class BaseRobotHandler {
 			} else {
 				theirPriority = 3;
 			}
-			if (theirPriority > maxPriority || (theirPriority == maxPriority && ri.supplyLevel < lowestSupply)) {
+			if ((theirPriority > maxPriority && (myType.isBuilding || ri.supplyLevel < rc.getSupplyLevel()))
+					|| (theirPriority == maxPriority && ri.supplyLevel < lowestSupply)) {
 				maxPriority = theirPriority;
 				lowestSupply = ri.supplyLevel;
 				suppliesToThisLocation = ri.location;
@@ -263,12 +265,12 @@ public abstract class BaseRobotHandler {
 			try {
 				rc.transferSupplies((int) transferAmount, suppliesToThisLocation);
 				return true;
-			} catch (Exception e) {
+			} catch (GameActionException e) {
 				// this should be fixed. if it hasn't happened for several commits, just delete these lines.
 				// I think this happens when a unit misses the turn change (too many bytecodes)
 				System.out.println("exception while sending supplies to " + suppliesToThisLocation
 						+ ". Did this robot run out of bytecodes?");
-				// e.printStackTrace();
+				e.printStackTrace();
 			}
 		}
 
@@ -278,7 +280,7 @@ public abstract class BaseRobotHandler {
 	// some default action implementations
 
 	protected boolean hasTimeToTransferSupply() {
-		int maxBytecodesForTransfer = maxBytecodesToUse() - 500;
+		int maxBytecodesForTransfer = maxBytecodesToUse() - 600;
 		return (Clock.getBytecodeNum() < maxBytecodesForTransfer);
 	}
 
