@@ -24,25 +24,25 @@ public class BroadcastInterface {
 	// 0-20: number of each robot
 	// 21-57620: distance to opponent HQ of each map tile--maybe we should also have distance from our HQ?
 	// 58625: attack/retreat signal
-	// 58626: 
-	// 58627: 
-	// 58628: 
+	// 58626:
+	// 58627:
+	// 58628:
 	// 58629: pathfinding queue head address
 	// 58630: pathfinding queue tail address
 	// 58631: pathfinding queue current size
 	// 58632-61631: pathfinding queue
 	// 61632: number of miners with abundant ore, for economy feedback system, odd turns
 	// 61633: number of miners with abundant ore, for economy feedback system, even turns
-	// 61634: supply queue head address
-	// 61635: supply queue tail address
-	// 61636: supply queue current size
-	// 61637-64637: supply queue
+	// 61634:
+	// 61635:
+	// 61636:
+	// 61637-64637:
 	// 64638: build more supply depots signal
-	// 64639: 
+	// 64639:
 	// 64640-64660: number of each enemy robot
-	// 64661: 
-	// 64662: 
-	// 64663: 
+	// 64661:
+	// 64662:
+	// 64663:
 	// 64664:
 	// 64665-65264: a list of launchers and the enemies they are targeting
 	// 65265: a map location of the next tower/hq to go to
@@ -168,7 +168,6 @@ public class BroadcastInterface {
 	// note: daniel tried doing this for enqueuing, but the cost of the linked list hardly made it worth it
 	// by reducing the number of broadcasts needed for head updates
 
-
 	public static Object findDirectionToHq(RobotController rc) {
 		// TODO Auto-generated method stub
 		return null;
@@ -179,8 +178,6 @@ public class BroadcastInterface {
 		return null;
 	}
 
-	
-	
 	public static int[] dequeuePathfindingQueue(RobotController rc) throws GameActionException {
 		int size = rc.readBroadcast(pfqSizeAddr);
 		if (size > 0) {
@@ -280,42 +277,6 @@ public class BroadcastInterface {
 		} else {
 			return rc.readBroadcast(abundantOreChannel2);
 		}
-	}
-
-	// 61634: supply queue head address
-	// 61635: supply queue tail address
-	// 61636: supply queue current size
-	// 61637-64637: supply queue
-	private static final int sqHeadAddr = 61634;
-	private static final int sqTailAddr = 61635;
-	private static final int sqSizeAddr = 61636;
-	private static final int sqBaseAddr = 61637;
-	private static final int SQ_CAPACITY = 3000;
-
-	public static int dequeueSupplyQueue(RobotController rc) throws GameActionException {
-		int size = rc.readBroadcast(sqSizeAddr);
-		if (size > 0) {
-			int head = rc.readBroadcast(sqHeadAddr);
-			rc.broadcast(sqHeadAddr, (head + 1) % SQ_CAPACITY);
-			rc.broadcast(sqSizeAddr, size - 1);
-			return rc.readBroadcast(sqBaseAddr + head);
-		}
-		return -1;
-	}
-
-	public static boolean enqueueSupplyQueue(RobotController rc, int robotID) throws GameActionException {
-		int size = rc.readBroadcast(sqSizeAddr);
-		if (size < SQ_CAPACITY) {
-			int tail = rc.readBroadcast(sqTailAddr);
-			rc.broadcast(sqTailAddr, (tail + 1) % SQ_CAPACITY);
-			rc.broadcast(sqSizeAddr, size + 1);
-
-			rc.broadcast(sqBaseAddr + tail, robotID);
-			return true;
-		}
-		// TODO: handle the case when the queue is full
-		System.out.println("The supply queue is full. Maybe you should increase the size, or investigate why it filled up.");
-		return false;
 	}
 
 	private static int moreSupplyDepotChannel = 64638;

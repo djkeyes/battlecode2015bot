@@ -198,21 +198,8 @@ public abstract class BaseRobotHandler {
 	public void init() throws GameActionException {
 	}
 
-	private boolean isSupplyLow = false;
-
 	// return true if there was a transfer
 	protected boolean distributeSupply() throws GameActionException {
-		// ask couriers for supply, if they're available
-		if (!rc.getType().isBuilding) {
-			double supply = rc.getSupplyLevel();
-			if (!isSupplyLow && supply <= 500) {
-				BroadcastInterface.enqueueSupplyQueue(rc, rc.getID());
-				isSupplyLow = true;
-			} else if (supply > 500) {
-				isSupplyLow = false;
-			}
-		}
-
 		// if there are a lot of nearby allies, we might run out of bytecodes.
 		// invoking transferSupplies() costs us 500 bytecodes (it's really expensive!)
 		if (!hasTimeToTransferSupply()) {
@@ -220,11 +207,24 @@ public abstract class BaseRobotHandler {
 		}
 		RobotInfo[] nearbyAllies = rc.senseNearbyRobots(rc.getLocation(), GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED, rc.getTeam());
 		double lowestSupply;
+
+		RobotType myType = rc.getType();
+		RobotType targetType = null;
+		int myPriority = 0;
+		if (myType.isBuilding) {
+			myPriority = 1;
+		} else if (myType.canMine()) {
+			myPriority = 2;
+		} else {
+			myPriority = 3;
+		}
 		if (rc.getType().isBuilding) {
 			lowestSupply = Double.MAX_VALUE;
 		} else {
 			lowestSupply = rc.getSupplyLevel();
 		}
+
+		int maxPriority = myPriority;
 		MapLocation suppliesToThisLocation = null;
 
 		for (RobotInfo ri : nearbyAllies) {
@@ -236,13 +236,18 @@ public abstract class BaseRobotHandler {
 				continue;
 			}
 
-			if (ri.type.isBuilding) {
-				// buildings don't need supply
-				// sometimes buildings will transfer supply to each other if there aren't units nearby, but that's handled by a
-				// subclass
-				continue;
+			// priorities: launcher==soldier > miner > building
+			targetType = ri.type;
+			int theirPriority = 0;
+			if (targetType.isBuilding) {
+				theirPriority = 1;
+			} else if (targetType.canMine()) {
+				theirPriority = 2;
+			} else {
+				theirPriority = 3;
 			}
-			if (ri.supplyLevel < lowestSupply) {
+			if (theirPriority > maxPriority || (theirPriority == maxPriority && ri.supplyLevel < lowestSupply)) {
+				maxPriority = theirPriority;
 				lowestSupply = ri.supplyLevel;
 				suppliesToThisLocation = ri.location;
 			}
@@ -415,9 +420,9 @@ public abstract class BaseRobotHandler {
 		public boolean run() throws GameActionException {
 			// get the movement direction recommended for the current tile
 			Direction recommendedDir = BroadcastInterface.getScoutingDirection(rc);
-			if(recommendedDir != null){
-				for(Direction d : Util.getDirectionsStrictlyToward(recommendedDir)){
-					if(rc.canMove(d)){
+			if (recommendedDir != null) {
+				for (Direction d : Util.getDirectionsStrictlyToward(recommendedDir)) {
+					if (rc.canMove(d)) {
 						rc.move(d);
 						break;
 					}
@@ -427,7 +432,7 @@ public abstract class BaseRobotHandler {
 			return false;
 		}
 	}
-	
+
 	public class MoveTo implements Action {
 		private boolean avoidTowers;
 		private boolean avoidEnemiesAndTowers;
